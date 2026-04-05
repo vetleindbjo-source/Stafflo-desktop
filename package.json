@@ -1,0 +1,87 @@
+{
+  "name": "stafflo",
+  "version": "1.0.0",
+  "description": "Staff. Simplified. — AI-powered work scheduling",
+  "main": "out/main/index.js",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview",
+    "dist": "npm run build && electron-builder"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "date-fns": "^3.6.0",
+    "electron-store": "^8.2.0",
+    "react": "^19.2.4",
+    "react-dom": "^19.2.4",
+    "zustand": "^4.5.2"
+  },
+  "devDependencies": {
+    "@electron-toolkit/preload": "^3.0.2",
+    "@electron-toolkit/tsconfig": "^2.0.0",
+    "@electron-toolkit/utils": "^4.0.0",
+    "@types/node": "^20.12.0",
+    "@types/react": "^18.2.79",
+    "@types/react-dom": "^18.2.25",
+    "@vitejs/plugin-react": "^4.2.1",
+    "autoprefixer": "^10.4.19",
+    "electron": "^30.0.1",
+    "electron-builder": "^24.13.3",
+    "electron-vite": "^2.1.0",
+    "postcss": "^8.4.38",
+    "tailwindcss": "^3.4.3",
+    "typescript": "^5.4.4",
+    "vite": "^5.2.8"
+  },
+  "build": {
+    "electronDownload": {
+      "cache": "C:/Users/vetle/AppData/Local/electron/Cache"
+    },
+    "appId": "no.stafflo.app",
+    "productName": "Stafflo",
+    "copyright": "Copyright © 2025 Stafflo",
+    "directories": {
+      "output": "dist",
+      "buildResources": "resources"
+    },
+    "files": [
+      "out/**/*"
+    ],
+    "protocols": [
+      {
+        "name": "Stafflo",
+        "schemes": ["stafflo"]
+      }
+    ],
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ],
+      "icon": "resources/icon.ico",
+      "publisherName": "Stafflo"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "Stafflo",
+      "installerIcon": "resources/icon.ico",
+      "uninstallerIcon": "resources/icon.ico"
+    },
+    "mac": {
+      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "icon": "resources/icon.icns",
+      "category": "public.app-category.business",
+      "darkModeSupport": true
+    },
+    "linux": {
+      "target": ["AppImage", "deb"],
+      "icon": "resources/icon.png",
+      "category": "Office"
+    },
+    "publish": null
+  }
+}
