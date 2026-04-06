@@ -1,0 +1,670 @@
+<!DOCTYPE html>
+<html lang="no">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Stafflo — AI-drevet arbeidsplanlegging</title>
+  <meta name="description" content="Stafflo er en AI-drevet planleggingsapp for norske butikker. Lag perfekte arbeidsskift på sekunder." />
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --cyan: #22d4ff;
+      --blue: #0088cc;
+      --dark: #0a0f1e;
+      --card: rgba(255,255,255,0.04);
+      --border: rgba(255,255,255,0.08);
+    }
+
+    body {
+      font-family: 'Inter', system-ui, sans-serif;
+      background: var(--dark);
+      color: #fff;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* ── Coming Soon Gate ──────────────────────────────── */
+    #gate {
+      position: fixed; inset: 0; z-index: 1000;
+      background: linear-gradient(135deg, #0a0f1e 0%, #0d1a30 50%, #0a0f1e 100%);
+      display: flex; align-items: center; justify-content: center;
+      padding: 2rem;
+    }
+    #gate.hidden { display: none; }
+
+    .gate-card {
+      width: 100%; max-width: 400px;
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2.5rem;
+      text-align: center;
+      backdrop-filter: blur(12px);
+    }
+    .gate-badge {
+      display: inline-block;
+      background: rgba(34,212,255,0.1);
+      border: 1px solid rgba(34,212,255,0.3);
+      color: var(--cyan);
+      font-size: 0.7rem;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+      padding: 0.3rem 0.8rem;
+      border-radius: 999px;
+      margin-bottom: 1.5rem;
+    }
+    .gate-card h1 {
+      font-size: 2rem;
+      font-weight: 800;
+      letter-spacing: 0.04em;
+      background: linear-gradient(135deg, #fff 0%, rgba(255,255,255,0.7) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+    }
+    .gate-card p {
+      color: rgba(255,255,255,0.45);
+      font-size: 0.9rem;
+      line-height: 1.6;
+      margin-bottom: 2rem;
+    }
+    .gate-divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 1.5rem 0;
+    }
+    .gate-label {
+      font-size: 0.75rem;
+      font-weight: 600;
+      color: rgba(255,255,255,0.4);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: 0.6rem;
+      text-align: left;
+    }
+    .gate-input {
+      width: 100%;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 0.75rem 1rem;
+      color: #fff;
+      font-size: 0.9rem;
+      font-family: inherit;
+      outline: none;
+      transition: border-color 0.2s;
+      margin-bottom: 0.75rem;
+    }
+    .gate-input:focus { border-color: rgba(34,212,255,0.5); }
+    .gate-input::placeholder { color: rgba(255,255,255,0.25); }
+    .gate-btn {
+      width: 100%;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #fff;
+      border: none;
+      border-radius: 12px;
+      padding: 0.8rem;
+      font-size: 0.9rem;
+      font-weight: 600;
+      font-family: inherit;
+      cursor: pointer;
+      transition: opacity 0.2s, transform 0.1s;
+    }
+    .gate-btn:hover { opacity: 0.9; }
+    .gate-btn:active { transform: scale(0.98); }
+    .gate-error {
+      color: #f87171;
+      font-size: 0.8rem;
+      margin-top: 0.5rem;
+      display: none;
+    }
+    .gate-email-note {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: rgba(255,255,255,0.25);
+    }
+
+    /* ── Main Landing Page ─────────────────────────────── */
+    #landing { display: none; }
+    #landing.visible { display: block; }
+
+    /* Nav */
+    nav {
+      position: fixed; top: 0; left: 0; right: 0; z-index: 100;
+      padding: 1rem 2rem;
+      display: flex; align-items: center; justify-content: space-between;
+      background: rgba(10,15,30,0.8);
+      backdrop-filter: blur(12px);
+      border-bottom: 1px solid var(--border);
+    }
+    .nav-logo {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 1.1rem; font-weight: 800; letter-spacing: 0.06em;
+      color: #fff; text-decoration: none;
+    }
+    .nav-links { display: flex; gap: 2rem; }
+    .nav-links a {
+      color: rgba(255,255,255,0.5);
+      text-decoration: none; font-size: 0.875rem;
+      transition: color 0.2s;
+    }
+    .nav-links a:hover { color: #fff; }
+    .nav-cta {
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #fff; border: none; border-radius: 8px;
+      padding: 0.5rem 1.2rem; font-size: 0.85rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .nav-cta:hover { opacity: 0.85; }
+
+    /* Hero */
+    .hero {
+      min-height: 100vh;
+      display: flex; align-items: center; justify-content: center;
+      padding: 8rem 2rem 4rem;
+      text-align: center;
+      position: relative;
+      background: radial-gradient(ellipse 80% 60% at 50% 0%, rgba(34,212,255,0.08) 0%, transparent 70%);
+    }
+    .hero-badge {
+      display: inline-flex; align-items: center; gap: 0.4rem;
+      background: rgba(34,212,255,0.1);
+      border: 1px solid rgba(34,212,255,0.25);
+      color: var(--cyan);
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      padding: 0.35rem 1rem; border-radius: 999px;
+      margin-bottom: 2rem;
+    }
+    .hero-badge span { width: 6px; height: 6px; background: var(--cyan); border-radius: 50%; display: inline-block; }
+    .hero h1 {
+      font-size: clamp(2.5rem, 6vw, 4.5rem);
+      font-weight: 800; line-height: 1.1;
+      letter-spacing: -0.02em;
+      margin-bottom: 1.5rem;
+    }
+    .hero h1 em {
+      font-style: normal;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p {
+      font-size: 1.15rem; color: rgba(255,255,255,0.55);
+      max-width: 520px; margin: 0 auto 2.5rem;
+      line-height: 1.7;
+    }
+    .hero-btns {
+      display: flex; gap: 1rem; justify-content: center;
+      flex-wrap: wrap;
+    }
+    .btn-primary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #fff; text-decoration: none; border: none;
+      border-radius: 12px; padding: 0.85rem 1.8rem;
+      font-size: 1rem; font-weight: 600; font-family: inherit;
+      cursor: pointer; transition: opacity 0.2s, transform 0.1s;
+      box-shadow: 0 0 40px rgba(34,212,255,0.2);
+    }
+    .btn-primary:hover { opacity: 0.9; transform: translateY(-1px); }
+    .btn-primary:active { transform: translateY(0); }
+    .btn-secondary {
+      display: inline-flex; align-items: center; gap: 0.5rem;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      color: rgba(255,255,255,0.75); text-decoration: none;
+      border-radius: 12px; padding: 0.85rem 1.8rem;
+      font-size: 1rem; font-weight: 500; font-family: inherit;
+      cursor: pointer; transition: background 0.2s;
+    }
+    .btn-secondary:hover { background: rgba(255,255,255,0.1); color: #fff; }
+    .hero-note {
+      margin-top: 1.2rem;
+      font-size: 0.8rem; color: rgba(255,255,255,0.3);
+    }
+
+    /* Section */
+    section {
+      padding: 5rem 2rem;
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+    .section-label {
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: var(--cyan); margin-bottom: 0.75rem;
+    }
+    .section-title {
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      font-weight: 800; line-height: 1.15;
+      letter-spacing: -0.01em;
+      margin-bottom: 1rem;
+    }
+    .section-sub {
+      color: rgba(255,255,255,0.5);
+      font-size: 1rem; line-height: 1.7;
+      max-width: 500px;
+      margin-bottom: 3rem;
+    }
+
+    /* Features */
+    .features-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+      gap: 1.5rem;
+    }
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 1.75rem;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .feature-card:hover {
+      border-color: rgba(34,212,255,0.2);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      width: 44px; height: 44px;
+      background: rgba(34,212,255,0.1);
+      border: 1px solid rgba(34,212,255,0.2);
+      border-radius: 12px;
+      display: flex; align-items: center; justify-content: center;
+      margin-bottom: 1rem;
+      font-size: 1.2rem;
+    }
+    .feature-card h3 {
+      font-size: 1rem; font-weight: 600;
+      margin-bottom: 0.5rem;
+    }
+    .feature-card p {
+      font-size: 0.875rem; color: rgba(255,255,255,0.45);
+      line-height: 1.6;
+    }
+
+    /* Pricing */
+    .pricing-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 1.5rem;
+    }
+    .pricing-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 2rem;
+      position: relative;
+      transition: border-color 0.2s, transform 0.2s;
+    }
+    .pricing-card.featured {
+      border-color: rgba(34,212,255,0.35);
+      background: rgba(34,212,255,0.04);
+    }
+    .pricing-card:hover { transform: translateY(-2px); }
+    .pricing-badge {
+      position: absolute; top: -1px; right: 1.5rem;
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #fff; font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.06em; text-transform: uppercase;
+      padding: 0.3rem 0.8rem;
+      border-radius: 0 0 8px 8px;
+    }
+    .pricing-plan {
+      font-size: 0.75rem; font-weight: 600;
+      letter-spacing: 0.1em; text-transform: uppercase;
+      color: rgba(255,255,255,0.5);
+      margin-bottom: 0.5rem;
+    }
+    .pricing-price {
+      font-size: 2.4rem; font-weight: 800; line-height: 1;
+      margin-bottom: 0.3rem;
+    }
+    .pricing-price sup { font-size: 1rem; font-weight: 600; vertical-align: top; margin-top: 0.4rem; }
+    .pricing-price sub { font-size: 0.875rem; font-weight: 400; color: rgba(255,255,255,0.4); }
+    .pricing-desc {
+      font-size: 0.85rem; color: rgba(255,255,255,0.45);
+      margin-bottom: 1.5rem;
+      line-height: 1.5;
+    }
+    .pricing-features {
+      list-style: none;
+      margin-bottom: 2rem;
+      display: flex; flex-direction: column; gap: 0.6rem;
+    }
+    .pricing-features li {
+      display: flex; align-items: center; gap: 0.6rem;
+      font-size: 0.875rem; color: rgba(255,255,255,0.7);
+    }
+    .pricing-features li::before {
+      content: '';
+      width: 16px; height: 16px; flex-shrink: 0;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%2322d4ff'%3E%3Cpath d='M13.5 4.5l-7 7L3 8'/%3E%3C/svg%3E") center/contain no-repeat;
+    }
+    .pricing-features li.dim { color: rgba(255,255,255,0.3); }
+    .pricing-features li.dim::before {
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='%23ffffff33'%3E%3Cpath d='M13.5 4.5l-7 7L3 8'/%3E%3C/svg%3E") center/contain no-repeat;
+    }
+    .pricing-cta {
+      display: block; width: 100%; text-align: center;
+      padding: 0.75rem; border-radius: 12px;
+      font-size: 0.9rem; font-weight: 600;
+      cursor: pointer; font-family: inherit; text-decoration: none;
+      transition: opacity 0.2s;
+    }
+    .pricing-cta.primary {
+      background: linear-gradient(135deg, var(--cyan), var(--blue));
+      color: #fff; border: none;
+    }
+    .pricing-cta.outline {
+      background: transparent;
+      border: 1px solid rgba(255,255,255,0.15);
+      color: rgba(255,255,255,0.7);
+    }
+    .pricing-cta:hover { opacity: 0.85; }
+
+    /* Download section */
+    .download-section {
+      text-align: center;
+      padding: 6rem 2rem;
+      background: radial-gradient(ellipse 60% 50% at 50% 100%, rgba(34,212,255,0.07) 0%, transparent 70%);
+    }
+    .download-section h2 {
+      font-size: clamp(1.8rem, 4vw, 2.5rem);
+      font-weight: 800; margin-bottom: 1rem;
+    }
+    .download-section p {
+      color: rgba(255,255,255,0.45); font-size: 1rem;
+      margin-bottom: 2rem;
+    }
+    .download-os {
+      font-size: 0.75rem; color: rgba(255,255,255,0.25);
+      margin-top: 0.75rem;
+    }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 2rem;
+      text-align: center;
+      color: rgba(255,255,255,0.25);
+      font-size: 0.8rem;
+    }
+    footer a { color: rgba(255,255,255,0.35); text-decoration: none; }
+    footer a:hover { color: rgba(255,255,255,0.6); }
+
+    /* Scroll sections separator */
+    .divider {
+      border: none;
+      border-top: 1px solid var(--border);
+      max-width: 1100px;
+      margin: 0 auto;
+    }
+
+    @media (max-width: 640px) {
+      .nav-links { display: none; }
+      .features-grid, .pricing-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── COMING SOON GATE ──────────────────────────────────────── -->
+<div id="gate">
+  <div class="gate-card">
+    <div class="gate-badge">Kommer snart</div>
+    <h1>STAFFLO</h1>
+    <p>
+      AI-drevet arbeidsplanlegging for norske butikker.<br />
+      Lag perfekte skift på sekunder — vi lanserer snart.
+    </p>
+
+    <hr class="gate-divider" />
+
+    <div class="gate-label">Har du tilgangskode?</div>
+    <input
+      id="gate-input"
+      class="gate-input"
+      type="password"
+      placeholder="Skriv inn tilgangskode"
+      autocomplete="off"
+    />
+    <button class="gate-btn" onclick="checkAccess()">Åpne siden</button>
+    <div id="gate-error" class="gate-error">Feil tilgangskode. Prøv igjen.</div>
+
+    <p class="gate-email-note">Ingen kode? Kontakt <a href="mailto:hei@stafflo.no" style="color:rgba(255,255,255,0.4)">hei@stafflo.no</a> for tidlig tilgang.</p>
+  </div>
+</div>
+
+<!-- ── MAIN LANDING PAGE ─────────────────────────────────────── -->
+<div id="landing">
+
+  <!-- Nav -->
+  <nav>
+    <a href="#" class="nav-logo">
+      <svg width="24" height="24" viewBox="-10 -6 120 124" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="nlg" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stop-color="#22D4FF"/>
+            <stop offset="100%" stop-color="#0088CC"/>
+          </linearGradient>
+        </defs>
+        <path d="M50 6 C62 6 80 14 80 28 C80 37 73 41 64 44 C73 47 80 51 80 62 C80 78 62 94 50 94 C38 94 20 86 20 72 C20 63 27 59 36 56 C27 53 20 49 20 38 C20 22 38 6 50 6Z" fill="url(#nlg)"/>
+        <path d="M50 38 L54 47 L63 50 L54 53 L50 62 L46 53 L37 50 L46 47Z" fill="white"/>
+      </svg>
+      STAFFLO
+    </a>
+    <div class="nav-links">
+      <a href="#features">Funksjoner</a>
+      <a href="#pricing">Priser</a>
+      <a href="#download">Last ned</a>
+    </div>
+    <a href="#download" class="nav-cta">Last ned gratis</a>
+  </nav>
+
+  <!-- Hero -->
+  <div class="hero">
+    <div>
+      <div class="hero-badge"><span></span> AI-drevet planlegging</div>
+      <h1>Arbeidsskift på<br /><em>sekunder, ikke timer</em></h1>
+      <p>
+        Stafflo bruker kunstig intelligens til å lage perfekte arbeidsskift for butikken din —
+        med norsk arbeidsrettslovgivning og åpningstider innebygd.
+      </p>
+      <div class="hero-btns">
+        <a href="#download" class="btn-primary">
+          <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          Last ned Stafflo
+        </a>
+        <a href="#features" class="btn-secondary">
+          Se funksjoner
+          <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+          </svg>
+        </a>
+      </div>
+      <p class="hero-note">Windows — gratis 7-dagers prøveperiode</p>
+    </div>
+  </div>
+
+  <!-- Features -->
+  <hr class="divider" />
+  <section id="features">
+    <div class="section-label">Funksjoner</div>
+    <h2 class="section-title">Alt du trenger for<br />smart planlegging</h2>
+    <p class="section-sub">Designet for norske dagligvare- og faghandelsbutikker med alt fra ansatthåndtering til ferieplanlegging.</p>
+
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">✦</div>
+        <h3>AI-genererte skift</h3>
+        <p>Beskriv behovet ditt med egne ord — AI-en lager et komplett ukeskjema på sekunder basert på dine åpningstider og ansatte.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📋</div>
+        <h3>Ansatthåndtering</h3>
+        <p>Hold oversikt over stillingsprosenter, tilgjengelighet, roller og notater for hvert enkelt team-medlem.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🌴</div>
+        <h3>Ferieplanlegging</h3>
+        <p>Sett opp ferieønsker, konfliktssjekk og generer en rettferdig ferieplan automatisk for hele sesongen.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">📅</div>
+        <h3>Rediger og tilpass</h3>
+        <p>Endre skift direkte i et visuelt ukesoversikt. Dra og slipp, legg til ekstra vakter, og se overbelegg umiddelbart.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🇳🇴</div>
+        <h3>Norsk arbeidsliv</h3>
+        <p>Helligdager, norske stillingsprosenter og arbeidstidsregler er innebygd — ingen manuell tilpasning nødvendig.</p>
+      </div>
+      <div class="feature-card">
+        <div class="feature-icon">🔒</div>
+        <h3>Dine data, din kontroll</h3>
+        <p>Alt lagres lokalt på din maskin. Ingen sky-sync, ingen abonnement på data — bare GDPR-trygg planlegging.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Pricing -->
+  <hr class="divider" />
+  <section id="pricing">
+    <div class="section-label">Priser</div>
+    <h2 class="section-title">Enkle, transparente priser</h2>
+    <p class="section-sub">Start gratis med prøveperiode. Ingen kredittkort nødvendig for å komme i gang.</p>
+
+    <div class="pricing-grid">
+      <!-- Trial -->
+      <div class="pricing-card">
+        <div class="pricing-plan">Prøveperiode</div>
+        <div class="pricing-price"><sup>kr</sup> 0</div>
+        <div class="pricing-desc">7 dager full tilgang. Utforsk alle funksjoner uten risiko.</div>
+        <ul class="pricing-features">
+          <li>AI-genererte ukeskjemaer</li>
+          <li>Opp til 20 ansatte</li>
+          <li>Ferieplanlegging</li>
+          <li>Skifthistorikk</li>
+          <li class="dim">Prioritert support</li>
+          <li class="dim">Kjede-dashboard</li>
+        </ul>
+        <a href="#download" class="pricing-cta outline">Start prøveperiode</a>
+      </div>
+
+      <!-- Solo -->
+      <div class="pricing-card featured">
+        <div class="pricing-badge">Mest populær</div>
+        <div class="pricing-plan">Solo butikk</div>
+        <div class="pricing-price"><sup>kr</sup> 3 499<sub>/år</sub></div>
+        <div class="pricing-desc">Én butikk, ubegrenset bruk. Perfekt for enkeltbutikker og franchiser.</div>
+        <ul class="pricing-features">
+          <li>Alt i prøveperioden</li>
+          <li>Ubegrenset ansatte</li>
+          <li>Prioritert support</li>
+          <li>Automatiske oppdateringer</li>
+          <li>Opp til 3 brukere</li>
+          <li class="dim">Kjede-dashboard</li>
+        </ul>
+        <a href="mailto:hei@stafflo.no?subject=Kjøp Solo butikk" class="pricing-cta primary">Kjøp lisens</a>
+      </div>
+
+      <!-- Chain -->
+      <div class="pricing-card">
+        <div class="pricing-plan">Liten kjede</div>
+        <div class="pricing-price"><sup>kr</sup> 1 999<sub>/lok/år</sub></div>
+        <div class="pricing-desc">Per lokasjon ved kjøp av 2+ lokasjoner. Skalerer med veksten din.</div>
+        <ul class="pricing-features">
+          <li>Alt i Solo butikk</li>
+          <li>Sentralt kjede-dashboard</li>
+          <li>Aktivitetsoversikt per butikk</li>
+          <li>Volumrabatt automatisk</li>
+          <li>Dedikert onboarding</li>
+          <li>Ubegrenset brukere</li>
+        </ul>
+        <a href="mailto:hei@stafflo.no?subject=Kjøp Liten kjede" class="pricing-cta outline">Ta kontakt</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- Download CTA -->
+  <hr class="divider" />
+  <div class="download-section" id="download">
+    <h2>Klar til å spare tid på planlegging?</h2>
+    <p>Last ned Stafflo gratis og kom i gang på under 5 minutter.</p>
+    <a
+      href="https://github.com/vetleindbjo-source/Stafflo/releases/latest/download/Stafflo.Setup.1.0.0.exe"
+      class="btn-primary"
+      style="display:inline-flex; font-size:1.1rem; padding:1rem 2.2rem;"
+    >
+      <svg width="20" height="20" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+      </svg>
+      Last ned Stafflo for Windows
+    </a>
+    <p class="download-os">Windows 10/11 · 64-bit · ~80 MB</p>
+  </div>
+
+  <!-- Footer -->
+  <footer>
+    <p style="margin-bottom:0.5rem;">
+      <strong style="color:rgba(255,255,255,0.6)">STAFFLO</strong>
+    </p>
+    <p>
+      <a href="mailto:hei@stafflo.no">hei@stafflo.no</a> &nbsp;·&nbsp;
+      <a href="#">Personvern</a> &nbsp;·&nbsp;
+      <a href="#">Vilkår</a>
+    </p>
+    <p style="margin-top:0.75rem;">© 2025 Stafflo. Alle rettigheter forbeholdt.</p>
+  </footer>
+
+</div><!-- end #landing -->
+
+<script>
+  // ── Access gate logic ──────────────────────────────────────────────────────
+  const ACCESS_CODE = 'stafflo2025';     // change this whenever you like
+  const PREVIEW_PARAM = 'preview';        // ?preview=stafflo2025
+
+  function unlock() {
+    document.getElementById('gate').classList.add('hidden');
+    document.getElementById('landing').classList.add('visible');
+    sessionStorage.setItem('stafflo_access', '1');
+  }
+
+  function checkAccess() {
+    const input = document.getElementById('gate-input').value.trim();
+    const err = document.getElementById('gate-error');
+    if (input === ACCESS_CODE) {
+      err.style.display = 'none';
+      unlock();
+    } else {
+      err.style.display = 'block';
+    }
+  }
+
+  // Allow enter key
+  document.getElementById('gate-input').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') checkAccess();
+  });
+
+  // Auto-unlock from URL param: ?preview=stafflo2025
+  const params = new URLSearchParams(location.search);
+  if (
+    params.get(PREVIEW_PARAM) === ACCESS_CODE ||
+    sessionStorage.getItem('stafflo_access') === '1'
+  ) {
+    unlock();
+  }
+</script>
+
+</body>
+</html>

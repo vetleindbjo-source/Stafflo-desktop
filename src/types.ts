@@ -97,6 +97,14 @@ export interface AuthUser {
 
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ?? 'http://localhost:3001'
 
+export interface LicenseStatus {
+  active: boolean
+  plan: 'trial' | 'solo' | 'small_chain' | null
+  maxSeats: number
+  expiresAt: string | null
+  key: string | null
+}
+
 export interface ScheduleShift {
   id: string
   employee: string

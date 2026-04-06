@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import { Employee, StoreSettings, GeneratedSchedule, AuthUser, BACKEND_URL, ScheduleDay, VacationPlan } from '../types'
+import { Employee, StoreSettings, GeneratedSchedule, AuthUser, BACKEND_URL, ScheduleDay, VacationPlan, LicenseStatus } from '../types'
 import { storage } from '../utils/storage'
 
 export type Theme = 'light' | 'dark'
@@ -27,6 +27,8 @@ interface AppStore {
   accessToken: string | null
   backendAvailable: boolean
   theme: Theme
+  licenseStatus: LicenseStatus | null
+  licenseChecked: boolean
 
   setActivePage: (page: AppStore['activePage']) => void
   setTheme: (theme: Theme) => void
@@ -35,6 +37,10 @@ interface AppStore {
   setAuth: (user: AuthUser, accessToken: string, refreshToken: string) => void
   logout: () => void
   setGdprConsent: () => void
+
+  // License
+  checkLicense: () => Promise<void>
+  activateLicense: (key: string) => Promise<{ success: boolean; error?: string }>
 
   // Employees
   addEmployee: (employee: Employee) => void
@@ -71,6 +77,8 @@ export const useAppStore = create<AppStore>((set, get) => ({
   accessToken: storage.getAccessToken(),
   backendAvailable: false,
   theme: getSavedTheme(),
+  licenseStatus: null,
+  licenseChecked: false,
 
   setActivePage: (page) => set({ activePage: page }),
 
@@ -182,6 +190,43 @@ export const useAppStore = create<AppStore>((set, get) => ({
     } catch {
       set({ backendAvailable: false })
       return false
+    }
+  },
+
+  // License
+  checkLicense: async () => {
+    const { apiFetch, authUser } = get()
+    // Local/dev users bypass the license gate
+    if (!authUser || authUser.id === 'local' || authUser.email === 'dev@arbeidsplan.local') {
+      set({ licenseStatus: { active: true, plan: 'trial', maxSeats: 999, expiresAt: null, key: null }, licenseChecked: true })
+      return
+    }
+    try {
+      const res = await apiFetch('/api/licenses/status')
+      if (res.ok) {
+        const data = await res.json() as LicenseStatus
+        set({ licenseStatus: data, licenseChecked: true })
+      } else {
+        set({ licenseStatus: { active: false, plan: null, maxSeats: 0, expiresAt: null, key: null }, licenseChecked: true })
+      }
+    } catch {
+      set({ licenseStatus: { active: false, plan: null, maxSeats: 0, expiresAt: null, key: null }, licenseChecked: true })
+    }
+  },
+
+  activateLicense: async (key: string) => {
+    const { apiFetch } = get()
+    try {
+      const res = await apiFetch('/api/licenses/activate', {
+        method: 'POST',
+        body: JSON.stringify({ key }),
+      })
+      const data = await res.json() as LicenseStatus & { error?: string }
+      if (!res.ok) return { success: false, error: data.error ?? 'Aktivering feilet' }
+      set({ licenseStatus: { ...data, key }, licenseChecked: true })
+      return { success: true }
+    } catch {
+      return { success: false, error: 'Nettverksfeil. Prøv igjen.' }
     }
   },
 
