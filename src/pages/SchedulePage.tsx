@@ -3,6 +3,7 @@ import { useAppStore } from '../store/useAppStore'
 import { getHolidaysInRange } from '../utils/holidays'
 import { GeneratedSchedule, ScheduleDay } from '../types'
 import { ScheduleView } from '../components/ScheduleView'
+import { useT } from '../utils/i18n'
 
 function generateId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
@@ -17,6 +18,7 @@ function formatDateNo(dateStr: string): string {
 
 export function SchedulePage() {
   const { employees, settings, addSchedule, updateScheduleDays, setActivePage, apiFetch } = useAppStore()
+  const tr = useT(settings.language ?? 'no')
 
   function toLocalDateStr(d: Date) {
     const y = d.getFullYear()
@@ -42,7 +44,7 @@ export function SchedulePage() {
 
   async function generate() {
     if (employees.length === 0) {
-      setError('Du må registrere minst én ansatt.')
+      setError(tr('schedule_no_employees_desc'))
       return
     }
     if (!startDate || !endDate || startDate > endDate) {
@@ -113,7 +115,7 @@ export function SchedulePage() {
       {/* Left panel */}
       <div className="w-80 flex-shrink-0 border-r border-theme-border bg-surface flex flex-col">
         <div className="px-6 py-6 border-b border-theme-border">
-          <h1 className="text-xl font-bold text-text-1">Lag arbeidsplan</h1>
+          <h1 className="text-xl font-bold text-text-1">{tr('schedule_title')}</h1>
         </div>
 
         <div className="flex-1 overflow-y-auto px-6 py-5 space-y-5">
@@ -122,7 +124,7 @@ export function SchedulePage() {
             <label className="block text-xs font-semibold text-text-2 uppercase tracking-wider mb-2">Periode</label>
             <div className="space-y-2">
               <div>
-                <label className="block text-xs text-text-2 mb-1">Fra</label>
+                <label className="block text-xs text-text-2 mb-1">{tr('schedule_from')}</label>
                 <input type="date" value={startDate} onChange={(e) => {
                   const newStart = e.target.value
                   setStartDate(newStart)
@@ -134,7 +136,7 @@ export function SchedulePage() {
                   className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
               </div>
               <div>
-                <label className="block text-xs text-text-2 mb-1">Til</label>
+                <label className="block text-xs text-text-2 mb-1">{tr('schedule_to')}</label>
                 <input type="date" value={endDate} onChange={(e) => setEndDate(e.target.value)}
                   className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
               </div>
@@ -245,7 +247,7 @@ export function SchedulePage() {
           {/* Extra instructions */}
           <div>
             <label className="block text-xs font-semibold text-text-2 uppercase tracking-wider mb-2">
-              Ekstra instruksjoner
+              {tr('schedule_instructions')}
             </label>
             <textarea value={extraInstructions} onChange={(e) => setExtraInstructions(e.target.value)} rows={3}
               placeholder="f.eks. Alltid erfaren ansatt på kveldsvakt, prioriter helger..."
@@ -265,7 +267,7 @@ export function SchedulePage() {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Genererer plan...
+                {tr('schedule_generating')}
               </>
             ) : (
               <>
@@ -292,7 +294,7 @@ export function SchedulePage() {
               </div>
               <button onClick={copyToClipboard}
                 className={`flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-medium transition-colors ${copied ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:bg-primary-dark'}`}>
-                {copied ? 'Kopiert!' : 'Kopier plan'}
+                {copied ? tr('schedule_copied') : tr('schedule_copy')}
               </button>
             </div>
             <div className="flex-1 overflow-y-auto p-6">

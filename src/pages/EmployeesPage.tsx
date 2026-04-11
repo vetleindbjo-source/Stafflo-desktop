@@ -2,9 +2,11 @@ import React, { useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { EmployeeModal } from '../components/EmployeeModal'
 import { Employee, DAY_NAMES, LEAVE_TYPE_LABELS } from '../types'
+import { useT } from '../utils/i18n'
 
 export function EmployeesPage() {
-  const { employees, addEmployee, updateEmployee, deleteEmployee } = useAppStore()
+  const { employees, addEmployee, updateEmployee, deleteEmployee, settings } = useAppStore()
+  const tr = useT(settings.language ?? 'no')
   const [showModal, setShowModal] = useState(false)
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null)
   const [search, setSearch] = useState('')
@@ -51,10 +53,8 @@ export function EmployeesPage() {
       <div className="px-8 py-6 border-b border-theme-border bg-header">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-2xl font-bold text-text-1">Ansatte</h1>
-            <p className="text-text-2 text-sm mt-0.5">
-              {employees.length} {employees.length === 1 ? 'ansatt' : 'ansatte'} registrert
-            </p>
+            <h1 className="text-2xl font-bold text-text-1">{tr('employees_title')}</h1>
+            <p className="text-text-2 text-sm mt-0.5">{tr('employees_subtitle', employees.length)}</p>
           </div>
           <button
             onClick={openAdd}
@@ -63,7 +63,7 @@ export function EmployeesPage() {
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            Legg til ansatt
+            {tr('employees_add')}
           </button>
         </div>
 
@@ -74,7 +74,7 @@ export function EmployeesPage() {
             </svg>
             <input
               type="text"
-              placeholder="Søk ansatte..."
+              placeholder={tr('employees_search')}
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               className="w-full max-w-xs pl-9 pr-4 border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
@@ -92,10 +92,8 @@ export function EmployeesPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-text-1 mb-1">Ingen ansatte enda</h3>
-            <p className="text-text-3 text-sm mb-6 max-w-xs">
-              Legg til ansatte for å komme i gang med arbeidsplanlegging.
-            </p>
+            <h3 className="text-lg font-semibold text-text-1 mb-1">{tr('employees_empty_title')}</h3>
+            <p className="text-text-3 text-sm mb-6 max-w-xs">{tr('employees_empty_desc')}</p>
             <button
               onClick={openAdd}
               className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors"
@@ -103,12 +101,12 @@ export function EmployeesPage() {
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
               </svg>
-              Legg til din første ansatt
+              {tr('employees_add_first')}
             </button>
           </div>
         ) : filtered.length === 0 ? (
           <div className="text-center py-12 text-text-3">
-            <p>Ingen ansatte matcher "{search}"</p>
+            <p>{tr('employees_no_match', search)}</p>
           </div>
         ) : (
           <div className="grid grid-cols-1 gap-3">
@@ -164,7 +162,7 @@ export function EmployeesPage() {
                   {employee.leaves.length > 0 && (
                     <div className="text-center px-3">
                       <div className="text-lg font-bold text-text-1">{employee.leaves.length}</div>
-                      <div className="text-xs text-text-3">fravær</div>
+                      <div className="text-xs text-text-3">{tr('leaves_label')}</div>
                     </div>
                   )}
 
@@ -173,7 +171,7 @@ export function EmployeesPage() {
                     <button
                       onClick={() => openEdit(employee)}
                       className="p-2 text-text-3 hover:text-primary hover:bg-primary/10 rounded-lg transition-colors"
-                      title="Rediger"
+                      title={tr('edit')}
                     >
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -185,20 +183,20 @@ export function EmployeesPage() {
                           onClick={() => confirmDelete(employee.id)}
                           className="px-2 py-1 text-xs bg-red-500 text-white rounded-lg hover:bg-red-600 transition-colors"
                         >
-                          Slett
+                          {tr('delete')}
                         </button>
                         <button
                           onClick={() => setDeleteConfirm(null)}
                           className="px-2 py-1 text-xs bg-slate-100 dark:bg-slate-700/60 text-text-2 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors"
                         >
-                          Nei
+                          {tr('no_word')}
                         </button>
                       </div>
                     ) : (
                       <button
                         onClick={() => setDeleteConfirm(employee.id)}
                         className="p-2 text-text-3 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors"
-                        title="Slett"
+                        title={tr('delete')}
                       >
                         <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />

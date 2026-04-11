@@ -1,0 +1,30 @@
+
+> stafflo@1.0.0 build
+> electron-vite build
+
+vite v5.4.21 building SSR bundle for production...
+(node:8860) [MODULE_TYPELESS_PACKAGE_JSON] Warning: Module type of file:///C:/Users/vetle/OneDrive/Skrivebord/CLAUDE/work-scheduler/postcss.config.js is not specified and it doesn't parse as CommonJS.
+Reparsing as ES module because module syntax was detected. This incurs a performance overhead.
+To eliminate this warning, add "type": "module" to C:\Users\vetle\OneDrive\Skrivebord\CLAUDE\work-scheduler\package.json.
+(Use `node --trace-warnings ...` to show where the warning was created)
+transforming...
+✓ 1 modules transformed.
+rendering chunks...
+out/main/index.js  2.69 kB
+✓ built in 390ms
+vite v5.4.21 building SSR bundle for production...
+transforming...
+✓ 1 modules transformed.
+Generated an empty chunk: "index".
+rendering chunks...
+out/preload/index.js  0.01 kB
+✓ built in 9ms
+vite v5.4.21 building for production...
+transforming...
+✓ 62 modules transformed.
+rendering chunks...
+out/renderer/index.html                   0.66 kB
+out/renderer/assets/index-Cf0pqsSt.css   44.36 kB
+out/renderer/assets/index-D8VOjDbE.js   754.60 kB
+✓ built in 1.17s
+BUILD_OK 

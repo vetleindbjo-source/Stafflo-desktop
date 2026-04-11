@@ -13,6 +13,7 @@
     "@anthropic-ai/sdk": "^0.39.0",
     "date-fns": "^3.6.0",
     "electron-store": "^8.2.0",
+    "electron-updater": "^6.8.3",
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "zustand": "^4.5.2"
@@ -51,13 +52,25 @@
     "protocols": [
       {
         "name": "Stafflo",
-        "schemes": ["stafflo"]
+        "schemes": [
+          "stafflo"
+        ]
       }
     ],
     "win": {
       "target": [
-        { "target": "nsis", "arch": ["x64"] },
-        { "target": "portable", "arch": ["x64"] }
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
       ],
       "icon": "resources/icon.ico",
       "publisherName": "Stafflo"
@@ -72,16 +85,31 @@
       "uninstallerIcon": "resources/icon.ico"
     },
     "mac": {
-      "target": [{ "target": "dmg", "arch": ["x64", "arm64"] }],
+      "target": [
+        {
+          "target": "dmg",
+          "arch": [
+            "x64",
+            "arm64"
+          ]
+        }
+      ],
       "icon": "resources/icon.icns",
       "category": "public.app-category.business",
       "darkModeSupport": true
     },
     "linux": {
-      "target": ["AppImage", "deb"],
+      "target": [
+        "AppImage",
+        "deb"
+      ],
       "icon": "resources/icon.png",
       "category": "Office"
     },
-    "publish": null
+    "publish": {
+      "provider": "github",
+      "owner": "vetleindbjo-source",
+      "repo": "Stafflo-desktop"
+    }
   }
 }

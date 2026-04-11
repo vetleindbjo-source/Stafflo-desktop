@@ -1,5 +1,6 @@
-import { app, shell, BrowserWindow, protocol } from 'electron'
+import { app, shell, BrowserWindow, ipcMain } from 'electron'
 import { join } from 'path'
+import { autoUpdater } from 'electron-updater'
 
 const PROTOCOL = 'stafflo'
 
@@ -83,6 +84,49 @@ app.whenReady().then(() => {
 
   app.on('activate', function () {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
+  })
+
+  // Auto-updater — only runs in production builds
+  if (app.isPackaged) {
+    autoUpdater.checkForUpdates()
+
+    autoUpdater.on('update-available', (info) => {
+      mainWindow?.webContents.send('update-available', {
+        version: info.version,
+        releaseNotes: info.releaseNotes ?? null,
+      })
+    })
+
+    autoUpdater.on('download-progress', (progress) => {
+      mainWindow?.webContents.send('update-download-progress', Math.round(progress.percent))
+    })
+
+    autoUpdater.on('update-downloaded', () => {
+      mainWindow?.webContents.send('update-downloaded')
+    })
+  }
+
+  ipcMain.on('download-update', () => {
+    autoUpdater.downloadUpdate()
+  })
+
+  ipcMain.on('install-update', () => {
+    autoUpdater.quitAndInstall()
+  })
+
+  ipcMain.on('check-for-updates', () => {
+    if (app.isPackaged) {
+      autoUpdater.checkForUpdates().catch(() => {
+        mainWindow?.webContents.send('update-check-result', 'latest')
+      })
+      // If no update-available fires within 5s, assume latest
+      const timeout = setTimeout(() => {
+        mainWindow?.webContents.send('update-check-result', 'latest')
+      }, 5000)
+      autoUpdater.once('update-available', () => clearTimeout(timeout))
+    } else {
+      mainWindow?.webContents.send('update-check-result', 'latest')
+    }
   })
 })
 

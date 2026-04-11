@@ -80,7 +80,9 @@ export interface StoreSettings {
   minStaffClosing: number     // minimum staff required at closing
   shiftTypes: ShiftTime[]
   anthropicApiKey: string
-  language: 'no' | 'en'
+  language: 'no' | 'en' | 'sv'
+  timeFormat: '24h' | '12h'
+  country: string             // ISO 3166-1 alpha-2, e.g. 'NO', 'SE', 'GB'
   onboardingDone: boolean     // whether the user has seen the welcome walkthrough
 }
 

@@ -56,6 +56,8 @@ export const storage = {
       ],
       anthropicApiKey: '',
       language: 'no',
+      timeFormat: '24h',
+      country: 'NO',
       onboardingDone: false,
     }
     const stored = getItem<Partial<StoreSettings>>(STORAGE_KEYS.SETTINGS, {})

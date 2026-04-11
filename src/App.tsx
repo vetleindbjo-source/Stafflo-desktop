@@ -10,6 +10,7 @@ import { SchedulePage } from './pages/SchedulePage'
 import { HistoryPage } from './pages/HistoryPage'
 import { SettingsPage } from './pages/SettingsPage'
 import { VacationPage } from './pages/VacationPage'
+import { UpdateBanner } from './components/UpdateBanner'
 
 export default function App() {
   const { activePage, authUser, checkBackend, settings, checkLicense, licenseStatus, licenseChecked } = useAppStore()
@@ -59,6 +60,7 @@ export default function App() {
       </main>
       {needsGdprConsent && <GdprConsentModal />}
       {needsOnboarding && <OnboardingModal />}
+      <UpdateBanner />
     </div>
   )
 }

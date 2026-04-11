@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630" viewBox="0 0 1200 630">
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0a0f1e"/>
+      <stop offset="100%" stop-color="#0d1b3e"/>
+    </linearGradient>
+    <linearGradient id="sg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22D4FF"/>
+      <stop offset="100%" stop-color="#0088CC"/>
+    </linearGradient>
+    <radialGradient id="glow" cx="50%" cy="50%" r="50%">
+      <stop offset="0%" stop-color="#22D4FF" stop-opacity="0.15"/>
+      <stop offset="100%" stop-color="#22D4FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <!-- Background -->
+  <rect width="1200" height="630" fill="url(#bg)"/>
+
+  <!-- Subtle glow behind logo -->
+  <ellipse cx="600" cy="280" rx="300" ry="220" fill="url(#glow)"/>
+
+  <!-- Stafflo S logo, centred -->
+  <g transform="translate(510, 120) scale(1.8)">
+    <path d="M50 6 C62 6 80 14 80 28 C80 37 73 41 64 44 C73 47 80 51 80 62 C80 78 62 94 50 94 C38 94 20 86 20 72 C20 63 27 59 36 56 C27 53 20 49 20 38 C20 22 38 6 50 6Z" fill="url(#sg)"/>
+    <path d="M50 38 L54 47 L63 50 L54 53 L50 62 L46 53 L37 50 L46 47Z" fill="white"/>
+  </g>
+
+  <!-- STAFFLO wordmark -->
+  <text x="600" y="440" font-family="system-ui, -apple-system, sans-serif" font-size="72" font-weight="800" fill="white" text-anchor="middle" letter-spacing="8">STAFFLO</text>
+
+  <!-- Tagline -->
+  <text x="600" y="510" font-family="system-ui, -apple-system, sans-serif" font-size="28" font-weight="400" fill="#22D4FF" text-anchor="middle" opacity="0.9">Staff. Simplified.</text>
+
+  <!-- URL -->
+  <text x="600" y="580" font-family="system-ui, -apple-system, sans-serif" font-size="20" font-weight="400" fill="rgba(255,255,255,0.35)" text-anchor="middle">stafflo.no</text>
+</svg>

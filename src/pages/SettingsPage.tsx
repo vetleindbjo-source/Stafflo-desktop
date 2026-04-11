@@ -1,29 +1,137 @@
-import React, { useState } from 'react'
+import React, { useState, useEffect, useRef } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { ShiftTime, SpecialDay, RoleRequirement, DayOverride } from '../types'
-import { ClockPicker } from '../components/ClockPicker'
+import { useT, t } from '../utils/i18n'
+import type { Lang } from '../utils/i18n'
+
+declare global {
+  interface Window {
+    electronAPI?: {
+      onUpdateAvailable?: (cb: (info: { version: string; releaseNotes: string | null }) => void) => void
+      onUpdateCheckResult?: (cb: (result: 'latest') => void) => void
+      checkForUpdates?: () => void
+      downloadUpdate?: () => void
+      installUpdate?: () => void
+    }
+  }
+}
+const timeInputClass = "w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+const selectClass = "border border-theme-border bg-surface text-text-1 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+
+function UpdateChecker({ tr }: { tr: ReturnType<typeof useT> }) {
+  const [status, setStatus] = useState<'idle' | 'checking' | 'latest' | 'found'>('idle')
+  const [foundVersion, setFoundVersion] = useState('')
+  const hasElectron = typeof window !== 'undefined' && !!window.electronAPI
+
+  useEffect(() => {
+    window.electronAPI?.onUpdateCheckResult((result) => {
+      if (result === 'latest') setStatus('latest')
+    })
+    window.electronAPI?.onUpdateAvailable?.((info) => {
+      setFoundVersion(info.version)
+      setStatus('found')
+    })
+  }, [])
+
+  function check() {
+    if (!hasElectron) return
+    setStatus('checking')
+    window.electronAPI!.checkForUpdates()
+  }
+
+  return (
+    <div className="px-5 py-4 flex items-center justify-between gap-4">
+      <div>
+        <h3 className="font-medium text-text-1 text-sm">{tr('settings_about_check_updates')}</h3>
+        {status === 'latest' && <p className="text-xs text-green-500 mt-0.5">{tr('settings_about_check_updates_latest')}</p>}
+        {status === 'found' && <p className="text-xs text-primary mt-0.5">{tr('settings_about_check_updates_found', foundVersion)}</p>}
+        {!hasElectron && <p className="text-xs text-text-3 mt-0.5">{tr('settings_about_check_updates_no_electron')}</p>}
+      </div>
+      <button
+        onClick={check}
+        disabled={!hasElectron || status === 'checking'}
+        className="flex-shrink-0 bg-slate-100 dark:bg-slate-700/60 text-text-2 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
+      >
+        {status === 'checking' ? tr('settings_about_check_updates_checking') : tr('settings_about_check_updates_btn')}
+      </button>
+    </div>
+  )
+}
 
 function generateId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-type Tab = 'general' | 'roller' | 'special' | 'shifts' | 'gdpr' | 'om'
+function TimeSelect({ value, onChange, timeFormat }: {
+  value: string
+  onChange: (v: string) => void
+  timeFormat: '24h' | '12h'
+}) {
+  const h = parseInt(value.split(':')[0] ?? '0', 10)
 
-const TABS: { id: Tab; label: string }[] = [
-  { id: 'general', label: 'Generelt' },
-  { id: 'roller', label: 'Roller' },
-  { id: 'special', label: 'Spesialdager' },
-  { id: 'shifts', label: 'Vakttyper' },
-  { id: 'gdpr', label: 'GDPR' },
-  { id: 'om', label: 'Om' },
-]
+  if (timeFormat === '12h') {
+    const ampm = h < 12 ? 'AM' : 'PM'
+    const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
+    const setHour = (newH12: number) => {
+      const newH = ampm === 'AM' ? (newH12 === 12 ? 0 : newH12) : (newH12 === 12 ? 12 : newH12 + 12)
+      onChange(`${String(newH).padStart(2, '0')}:00`)
+    }
+    const setAmpm = (newAmpm: string) => {
+      const newH = newAmpm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12)
+      onChange(`${String(newH).padStart(2, '0')}:00`)
+    }
+    return (
+      <div className="flex items-center gap-1">
+        <select value={h12} onChange={e => setHour(parseInt(e.target.value))} className={selectClass}>
+          {Array.from({ length: 12 }, (_, i) => i + 1).map(hr => <option key={hr} value={hr}>{hr}</option>)}
+        </select>
+        <select value={ampm} onChange={e => setAmpm(e.target.value)} className={selectClass}>
+          <option value="AM">AM</option>
+          <option value="PM">PM</option>
+        </select>
+      </div>
+    )
+  }
 
-const WEEKDAY_LABELS: Record<number, string> = {
-  1: 'Mandag', 2: 'Tirsdag', 3: 'Onsdag', 4: 'Torsdag', 5: 'Fredag', 6: 'Lørdag',
+  return (
+    <select value={h} onChange={e => onChange(`${String(parseInt(e.target.value)).padStart(2, '0')}:00`)} className={selectClass}>
+      {Array.from({ length: 24 }, (_, i) => i).map(hr => (
+        <option key={hr} value={hr}>{String(hr).padStart(2, '0')}:00</option>
+      ))}
+    </select>
+  )
 }
 
+const COUNTRIES = [
+  { code: 'NO', label: 'Norge' },
+  { code: 'SE', label: 'Sverige' },
+  { code: 'DK', label: 'Danmark' },
+  { code: 'FI', label: 'Finland' },
+  { code: 'GB', label: 'Storbritannia' },
+  { code: 'DE', label: 'Tyskland' },
+  { code: 'FR', label: 'Frankrike' },
+  { code: 'NL', label: 'Nederland' },
+  { code: 'PL', label: 'Polen' },
+  { code: 'ES', label: 'Spania' },
+  { code: 'IT', label: 'Italia' },
+  { code: 'US', label: 'USA' },
+]
+
+type Tab = 'general' | 'roller' | 'special' | 'shifts' | 'gdpr' | 'om'
+
+const TAB_KEYS: { id: Tab; key: string }[] = [
+  { id: 'general', key: 'settings_tab_general' },
+  { id: 'roller', key: 'settings_tab_roles' },
+  { id: 'special', key: 'settings_tab_special' },
+  { id: 'shifts', key: 'settings_tab_shifts' },
+  { id: 'gdpr', key: 'settings_tab_gdpr' },
+  { id: 'om', key: 'settings_tab_about' },
+]
+
+
 export function SettingsPage() {
-  const { settings, updateSettings, logout, authUser, apiFetch, employees } = useAppStore()
+  const { settings, updateSettings, logout, authUser, apiFetch, employees, theme, setTheme } = useAppStore()
+  const tr = useT(settings.language ?? 'no')
   const [tab, setTab] = useState<Tab>('general')
   const [saved, setSaved] = useState(false)
   const [local, setLocal] = useState({ ...settings })
@@ -33,6 +141,71 @@ export function SettingsPage() {
   const [showSpecialForm, setShowSpecialForm] = useState(false)
   const [gdprLoading, setGdprLoading] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState('')
+  const [importMessage, setImportMessage] = useState('')
+  const [importLoading, setImportLoading] = useState(false)
+  const prevCountry = useRef(local.country ?? 'NO')
+
+  // Auto-import holidays when country changes
+  useEffect(() => {
+    if (local.country && local.country !== prevCountry.current) {
+      prevCountry.current = local.country
+      importHolidaysForCountry(local.country)
+    }
+  }, [local.country])
+
+  // Translate default shift names when language changes
+  const prevLang = useRef(local.language ?? 'no')
+  useEffect(() => {
+    const lang = (local.language ?? 'no') as Lang
+    if (lang === prevLang.current) return
+    prevLang.current = lang
+    const langs: Lang[] = ['no', 'en', 'sv']
+    const allDayNames = new Set(langs.map(l => t(l, 'settings_shifts_default_day')))
+    const allEveningNames = new Set(langs.map(l => t(l, 'settings_shifts_default_evening')))
+    const newDay = t(lang, 'settings_shifts_default_day')
+    const newEvening = t(lang, 'settings_shifts_default_evening')
+    setLocal(prev => ({
+      ...prev,
+      shiftTypes: prev.shiftTypes.map(s => {
+        if (allDayNames.has(s.label)) return { ...s, label: newDay }
+        if (allEveningNames.has(s.label)) return { ...s, label: newEvening }
+        return s
+      }),
+    }))
+  }, [local.language])
+
+  async function importHolidaysForCountry(country: string) {
+    const year = new Date().getFullYear()
+    setImportLoading(true)
+    setImportMessage('')
+    try {
+      const res = await fetch(`https://date.nager.at/api/v3/PublicHolidays/${year}/${country}`)
+      if (!res.ok) throw new Error('API error')
+      const data = await res.json() as Array<{ date: string; localName: string; name: string }>
+      // Remove old holidays (days with no custom note — i.e. previously auto-imported)
+      // and replace with new country's holidays
+      const newDays: SpecialDay[] = data.map(h => ({
+        id: generateId(),
+        date: h.date,
+        note: h.localName,
+        closed: true,
+        openTime: local.openTime,
+        closeTime: local.closeTime,
+      }))
+      setLocal(prev => {
+        // Keep manually added special days (not from holidays API — identified as user-added if no match in new set)
+        const newDates = new Set(newDays.map(d => d.date))
+        const manual = (prev.specialDays ?? []).filter(d => !newDates.has(d.date))
+        const merged = [...manual, ...newDays].sort((a, b) => a.date.localeCompare(b.date))
+        return { ...prev, specialDays: merged }
+      })
+      setImportMessage(tr('settings_holidays_import').replace('{n}', String(newDays.length)).replace('{year}', String(year)))
+    } catch {
+      setImportMessage(tr('settings_holidays_error'))
+    } finally {
+      setImportLoading(false)
+    }
+  }
 
   function save() {
     updateSettings(local)
@@ -43,30 +216,31 @@ export function SettingsPage() {
   // ── Helpers ────────────────────────────────────────────────────────────────
 
   function addShift() {
-    const shift: ShiftTime = { start: '08:00', end: '16:00', label: 'Ny vakt' }
-    setLocal({ ...local, shiftTypes: [...local.shiftTypes, shift] })
+    const shift: ShiftTime = { start: '08:00', end: '16:00', label: tr('settings_shifts_new_label') }
+    setLocal(prev => ({ ...prev, shiftTypes: [...prev.shiftTypes, shift] }))
   }
 
   function updateShift(index: number, partial: Partial<ShiftTime>) {
-    const updated = local.shiftTypes.map((s, i) => i === index ? { ...s, ...partial } : s)
-    setLocal({ ...local, shiftTypes: updated })
+    setLocal(prev => ({ ...prev, shiftTypes: prev.shiftTypes.map((s, i) => i === index ? { ...s, ...partial } : s) }))
   }
 
   function removeShift(index: number) {
-    setLocal({ ...local, shiftTypes: local.shiftTypes.filter((_, i) => i !== index) })
+    setLocal(prev => ({ ...prev, shiftTypes: prev.shiftTypes.filter((_, i) => i !== index) }))
   }
 
   function addSpecialDay() {
     if (!newSpecial.date) return
     const day: SpecialDay = { id: generateId(), ...newSpecial }
-    const sorted = [...(local.specialDays ?? []), day].sort((a, b) => a.date.localeCompare(b.date))
-    setLocal({ ...local, specialDays: sorted })
+    setLocal(prev => ({
+      ...prev,
+      specialDays: [...(prev.specialDays ?? []), day].sort((a, b) => a.date.localeCompare(b.date)),
+    }))
     setNewSpecial({ date: '', note: '', closed: false, openTime: '10:00', closeTime: '16:00' })
     setShowSpecialForm(false)
   }
 
   function removeSpecialDay(id: string) {
-    setLocal({ ...local, specialDays: (local.specialDays ?? []).filter((d) => d.id !== id) })
+    setLocal(prev => ({ ...prev, specialDays: (prev.specialDays ?? []).filter((d) => d.id !== id) }))
   }
 
   function formatDateNo(dateStr: string) {
@@ -83,13 +257,15 @@ export function SettingsPage() {
   }
 
   function setDayOverride(day: number, override: DayOverride) {
-    setLocal({ ...local, perDayOverrides: { ...(local.perDayOverrides ?? {}), [day]: override } })
+    setLocal(prev => ({ ...prev, perDayOverrides: { ...(prev.perDayOverrides ?? {}), [day]: override } }))
   }
 
   function clearDayOverride(day: number) {
-    const overrides = { ...(local.perDayOverrides ?? {}) }
-    delete overrides[day]
-    setLocal({ ...local, perDayOverrides: overrides })
+    setLocal(prev => {
+      const overrides = { ...(prev.perDayOverrides ?? {}) }
+      delete overrides[day]
+      return { ...prev, perDayOverrides: overrides }
+    })
   }
 
   // ── Role requirements ──────────────────────────────────────────────────────
@@ -125,26 +301,25 @@ export function SettingsPage() {
       saturdayMin: 1,
       saturdayMax: 2,
     }
-    const updatedDeleted = deletedRoles.filter(r => r !== role)
-    setLocal({
-      ...local,
-      roleRequirements: [...(local.roleRequirements ?? []), req],
-      deletedRoleRequirements: updatedDeleted,
-    })
+    setLocal(prev => ({
+      ...prev,
+      roleRequirements: [...(prev.roleRequirements ?? []), req],
+      deletedRoleRequirements: (prev.deletedRoleRequirements ?? []).filter(r => r !== role),
+    }))
   }
 
   function updateRoleRequirement(index: number, partial: Partial<RoleRequirement>) {
-    const updated = (local.roleRequirements ?? []).map((r, i) => i === index ? { ...r, ...partial } : r)
-    setLocal({ ...local, roleRequirements: updated })
+    setLocal(prev => ({ ...prev, roleRequirements: (prev.roleRequirements ?? []).map((r, i) => i === index ? { ...r, ...partial } : r) }))
   }
 
   function deleteRoleRequirement(index: number) {
-    const role = (local.roleRequirements ?? [])[index].role
-    const updated = (local.roleRequirements ?? []).filter((_, i) => i !== index)
-    setLocal({
-      ...local,
-      roleRequirements: updated,
-      deletedRoleRequirements: [...deletedRoles, role],
+    setLocal(prev => {
+      const role = (prev.roleRequirements ?? [])[index].role
+      return {
+        ...prev,
+        roleRequirements: (prev.roleRequirements ?? []).filter((_, i) => i !== index),
+        deletedRoleRequirements: [...(prev.deletedRoleRequirements ?? []), role],
+      }
     })
   }
 
@@ -170,7 +345,7 @@ export function SettingsPage() {
   }
 
   async function deleteAccount() {
-    if (deleteConfirm !== 'SLETT KONTO') return
+    if (deleteConfirm !== tr('settings_gdpr_delete_confirm_value')) return
     setGdprLoading(true)
     try {
       const res = await apiFetch('/api/gdpr/delete-account', {
@@ -191,15 +366,15 @@ export function SettingsPage() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-8 py-6 border-b border-theme-border bg-header">
-        <h1 className="text-2xl font-bold text-text-1">Innstillinger</h1>
+        <h1 className="text-2xl font-bold text-text-1">{tr('settings_title')}</h1>
         <p className="text-text-2 text-sm mt-0.5">
-          {authUser ? `${authUser.name} · ${authUser.email}` : 'Konfigurer butikken din'}
+          {authUser ? tr('settings_subtitle_user', authUser.name, authUser.email) : tr('settings_subtitle_local')}
         </p>
       </div>
 
       {/* Tab bar */}
       <div className="flex border-b border-theme-border bg-header px-8 overflow-x-auto">
-        {TABS.map((t) => (
+        {TAB_KEYS.map((t) => (
           <button
             key={t.id}
             onClick={() => setTab(t.id)}
@@ -207,7 +382,7 @@ export function SettingsPage() {
               tab === t.id ? 'border-primary text-primary' : 'border-transparent text-text-2 hover:text-text-1'
             }`}
           >
-            {t.label}
+            {tr(t.key as Parameters<typeof tr>[0])}
           </button>
         ))}
       </div>
@@ -220,20 +395,35 @@ export function SettingsPage() {
             <div className="space-y-4">
               {/* Store name + hours */}
               <div className="bg-surface rounded-xl border border-theme-border shadow-card divide-y divide-theme-border">
-                <div className="px-5 py-4">
-                  <label className="block text-sm font-medium text-text-1 mb-1.5">Butikknavn</label>
-                  <input type="text" value={local.storeName} onChange={(e) => setLocal({ ...local, storeName: e.target.value })}
-                    className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                    placeholder="f.eks. Rema 1000 Storgata" />
-                </div>
                 <div className="px-5 py-4 grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-text-1 mb-1.5">Åpner (man–fre)</label>
-                    <ClockPicker value={local.openTime} onChange={(v) => setLocal({ ...local, openTime: v })} />
+                    <label className="block text-sm font-medium text-text-1 mb-1.5">{tr('settings_store_name')}</label>
+                    <input type="text" value={local.storeName} onChange={(e) => setLocal({ ...local, storeName: e.target.value })}
+                      className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                      placeholder={tr('settings_store_name_placeholder')} />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-1 mb-1.5">Stenger (man–fre)</label>
-                    <ClockPicker value={local.closeTime} onChange={(v) => setLocal({ ...local, closeTime: v })} />
+                    <label className="block text-sm font-medium text-text-1 mb-1.5">{tr('settings_country')}</label>
+                    <select value={local.country ?? 'NO'} onChange={(e) => setLocal({ ...local, country: e.target.value })}
+                      className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary">
+                      {COUNTRIES.map(c => <option key={c.code} value={c.code}>{c.label}</option>)}
+                    </select>
+                  </div>
+                </div>
+                {(importMessage || importLoading) && (
+                  <div className="px-5 py-2 flex items-center gap-2 text-xs text-text-3">
+                    {importLoading && <svg className="w-3 h-3 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z"/></svg>}
+                    <span className={importMessage.includes('ikke') || importMessage.includes('not') || importMessage.includes('Kunde') ? 'text-red-400' : 'text-primary'}>{importMessage}</span>
+                  </div>
+                )}
+                <div className="px-5 py-4 grid grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-text-1 mb-1.5">{tr('settings_open_weekdays')}</label>
+                    <TimeSelect value={local.openTime} onChange={(v) => setLocal({ ...local, openTime: v })} timeFormat={local.timeFormat ?? '24h'} />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-text-1 mb-1.5">{tr('settings_close_weekdays')}</label>
+                    <TimeSelect value={local.closeTime} onChange={(v) => setLocal({ ...local, closeTime: v })} timeFormat={local.timeFormat ?? '24h'} />
                   </div>
                 </div>
 
@@ -244,8 +434,8 @@ export function SettingsPage() {
                       onChange={(e) => setLocal({ ...local, sundayClosed: e.target.checked })}
                       className="w-4 h-4 accent-primary" />
                     <div>
-                      <span className="text-sm font-medium text-text-1">Stengt på søndager</span>
-                      <p className="text-xs text-text-3 mt-0.5">Standard i Norge. Spesialdager kan overstyre.</p>
+                      <span className="text-sm font-medium text-text-1">{tr('settings_sunday_closed')}</span>
+                      <p className="text-xs text-text-3 mt-0.5">{tr('settings_sunday_closed_desc')}</p>
                     </div>
                   </label>
                 </div>
@@ -256,7 +446,7 @@ export function SettingsPage() {
                     <input type="checkbox" checked={local.saturdayEnabled ?? false}
                       onChange={(e) => setLocal({ ...local, saturdayEnabled: e.target.checked })}
                       className="w-4 h-4 accent-primary" />
-                    <span className="text-sm font-medium text-text-1">Ulike åpningstider på lørdag</span>
+                    <span className="text-sm font-medium text-text-1">{tr('settings_saturday_different')}</span>
                   </label>
 
                   {local.saturdayEnabled && (
@@ -265,17 +455,17 @@ export function SettingsPage() {
                         <input type="checkbox" checked={local.saturdayClosed ?? false}
                           onChange={(e) => setLocal({ ...local, saturdayClosed: e.target.checked })}
                           className="w-4 h-4 accent-primary" />
-                        <span className="text-sm text-text-1">Stengt alle lørdager</span>
+                        <span className="text-sm text-text-1">{tr('settings_saturday_closed')}</span>
                       </label>
                       {!local.saturdayClosed && (
                         <div className="grid grid-cols-2 gap-3">
                           <div>
-                            <label className="block text-xs font-medium text-text-2 mb-1.5">Åpner lørdag</label>
-                            <ClockPicker value={local.saturdayOpenTime} onChange={(v) => setLocal({ ...local, saturdayOpenTime: v })} />
+                            <label className="block text-xs font-medium text-text-2 mb-1.5">{tr('settings_saturday_open')}</label>
+                            <TimeSelect value={local.saturdayOpenTime} onChange={(v) => setLocal({ ...local, saturdayOpenTime: v })} timeFormat={local.timeFormat ?? '24h'} />
                           </div>
                           <div>
-                            <label className="block text-xs font-medium text-text-2 mb-1.5">Stenger lørdag</label>
-                            <ClockPicker value={local.saturdayCloseTime} onChange={(v) => setLocal({ ...local, saturdayCloseTime: v })} />
+                            <label className="block text-xs font-medium text-text-2 mb-1.5">{tr('settings_saturday_close')}</label>
+                            <TimeSelect value={local.saturdayCloseTime} onChange={(v) => setLocal({ ...local, saturdayCloseTime: v })} timeFormat={local.timeFormat ?? '24h'} />
                           </div>
                         </div>
                       )}
@@ -286,30 +476,30 @@ export function SettingsPage() {
 
               {/* Global staffing */}
               <div className="bg-surface rounded-xl border border-theme-border shadow-card px-5 py-4 space-y-3">
-                <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">Globale bemanningskrav</p>
+                <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">{tr('settings_global_staffing')}</p>
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="block text-sm font-medium text-text-1 mb-1.5">Min. ansatte totalt</label>
+                    <label className="block text-sm font-medium text-text-1 mb-1.5">{tr('settings_min_staff')}</label>
                     <input type="number" min={1} max={20} value={local.minStaffPerShift}
                       onChange={(e) => setLocal({ ...local, minStaffPerShift: parseInt(e.target.value) || 1 })}
                       className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-1 mb-1.5">Maks. ansatte totalt</label>
+                    <label className="block text-sm font-medium text-text-1 mb-1.5">{tr('settings_max_staff')}</label>
                     <input type="number" min={1} max={30} value={local.maxStaffPerShift}
                       onChange={(e) => setLocal({ ...local, maxStaffPerShift: parseInt(e.target.value) || 5 })}
                       className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-1 mb-1">Min. ved åpning</label>
-                    <p className="text-xs text-text-3 mb-1.5">Ansatte som må være til stede ved åpning</p>
+                    <label className="block text-sm font-medium text-text-1 mb-1">{tr('settings_min_opening')}</label>
+                    <p className="text-xs text-text-3 mb-1.5">{tr('settings_min_opening_desc')}</p>
                     <input type="number" min={1} max={20} value={local.minStaffOpening ?? 2}
                       onChange={(e) => setLocal({ ...local, minStaffOpening: parseInt(e.target.value) || 1 })}
                       className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-text-1 mb-1">Min. ved stenging</label>
-                    <p className="text-xs text-text-3 mb-1.5">Ansatte som må være til stede ved stenging</p>
+                    <label className="block text-sm font-medium text-text-1 mb-1">{tr('settings_min_closing')}</label>
+                    <p className="text-xs text-text-3 mb-1.5">{tr('settings_min_closing_desc')}</p>
                     <input type="number" min={1} max={20} value={local.minStaffClosing ?? 2}
                       onChange={(e) => setLocal({ ...local, minStaffClosing: parseInt(e.target.value) || 1 })}
                       className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
@@ -320,8 +510,8 @@ export function SettingsPage() {
               {/* Per-day overrides */}
               <div className="bg-surface rounded-xl border border-theme-border shadow-card px-5 py-4 space-y-3">
                 <div>
-                  <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">Bemanningskrav per ukedag</p>
-                  <p className="text-xs text-text-3 mt-0.5">Overstyrer de globale kravene for spesifikke dager</p>
+                  <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">{tr('settings_per_day_overrides')}</p>
+                  <p className="text-xs text-text-3 mt-0.5">{tr('settings_per_day_overrides_desc')}</p>
                 </div>
                 <div className="space-y-2">
                   {[1, 2, 3, 4, 5, 6].map((day) => {
@@ -331,7 +521,7 @@ export function SettingsPage() {
                     if (day === 6 && !local.saturdayEnabled) return null
                     return (
                       <div key={day} className="flex items-center gap-3">
-                        <span className="text-sm text-text-1 w-20 flex-shrink-0">{WEEKDAY_LABELS[day]}</span>
+                        <span className="text-sm text-text-1 w-20 flex-shrink-0">{tr(`weekday_${day}` as Parameters<typeof tr>[0])}</span>
                         <label className="flex items-center gap-2 cursor-pointer flex-shrink-0">
                           <input type="checkbox" checked={isActive}
                             onChange={(e) => {
@@ -342,7 +532,7 @@ export function SettingsPage() {
                               }
                             }}
                             className="w-3.5 h-3.5 accent-primary" />
-                          <span className="text-xs text-text-2">Tilpass</span>
+                          <span className="text-xs text-text-2">{tr('settings_customize')}</span>
                         </label>
                         {isActive ? (
                           <div className="flex items-center gap-2 flex-1">
@@ -353,7 +543,7 @@ export function SettingsPage() {
                             <input type="number" min={1} max={30} value={override.maxStaff}
                               onChange={(e) => setDayOverride(day, { ...override, maxStaff: parseInt(e.target.value) || 1 })}
                               className="w-16 border border-theme-border bg-surface text-text-1 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-primary/30" />
-                            <span className="text-xs text-text-3">ansatte</span>
+                            <span className="text-xs text-text-3">{tr('settings_staff_unit')}</span>
                           </div>
                         ) : (
                           <span className="text-xs text-text-3 italic">{local.minStaffPerShift}–{local.maxStaffPerShift} (global)</span>
@@ -370,7 +560,7 @@ export function SettingsPage() {
           {tab === 'roller' && (
             <div className="space-y-4">
               <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 rounded-xl px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
-                Sett minimums- og maksimumskrav for ansatte med spesifikke roller. AI bruker dette når den lager arbeidsplanen.
+                {tr('settings_roles_desc')}
               </div>
 
               {/* Active role requirements */}
@@ -382,7 +572,7 @@ export function SettingsPage() {
                         <div>
                           <span className="font-medium text-text-1">{req.role}</span>
                           <span className="ml-2 text-xs text-text-3">
-                            ({employees.filter(e => e.role === req.role || e.keyPersonnelRole === req.role).length} ansatte)
+                            ({employees.filter(e => e.role === req.role || e.keyPersonnelRole === req.role).length} {tr('settings_staff_unit')})
                           </span>
                         </div>
                         <button onClick={() => deleteRoleRequirement(i)}
@@ -395,13 +585,13 @@ export function SettingsPage() {
 
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-text-2 mb-1">Min. per dag</label>
+                          <label className="block text-xs font-medium text-text-2 mb-1">{tr('settings_roles_min_day')}</label>
                           <input type="number" min={0} max={20} value={req.minStaff}
                             onChange={(e) => updateRoleRequirement(i, { minStaff: parseInt(e.target.value) || 0 })}
                             className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-text-2 mb-1">Maks. per dag</label>
+                          <label className="block text-xs font-medium text-text-2 mb-1">{tr('settings_roles_max_day')}</label>
                           <input type="number" min={0} max={20} value={req.maxStaff}
                             onChange={(e) => updateRoleRequirement(i, { maxStaff: parseInt(e.target.value) || 0 })}
                             className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
@@ -414,18 +604,18 @@ export function SettingsPage() {
                             <input type="checkbox" checked={req.saturdayFollowGlobal}
                               onChange={(e) => updateRoleRequirement(i, { saturdayFollowGlobal: e.target.checked })}
                               className="w-3.5 h-3.5 accent-primary" />
-                            <span className="text-xs text-text-2">Lørdag følger ukekrav</span>
+                            <span className="text-xs text-text-2">{tr('settings_roles_sat_follow')}</span>
                           </label>
                           {!req.saturdayFollowGlobal && (
                             <div className="grid grid-cols-2 gap-3">
                               <div>
-                                <label className="block text-xs font-medium text-text-2 mb-1">Min. lørdag</label>
+                                <label className="block text-xs font-medium text-text-2 mb-1">{tr('settings_roles_sat_min')}</label>
                                 <input type="number" min={0} max={20} value={req.saturdayMin}
                                   onChange={(e) => updateRoleRequirement(i, { saturdayMin: parseInt(e.target.value) || 0 })}
                                   className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
                               </div>
                               <div>
-                                <label className="block text-xs font-medium text-text-2 mb-1">Maks. lørdag</label>
+                                <label className="block text-xs font-medium text-text-2 mb-1">{tr('settings_roles_sat_max')}</label>
                                 <input type="number" min={0} max={20} value={req.saturdayMax}
                                   onChange={(e) => updateRoleRequirement(i, { saturdayMax: parseInt(e.target.value) || 0 })}
                                   className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30" />
@@ -442,16 +632,16 @@ export function SettingsPage() {
               {/* Suggestions */}
               {pendingSuggestions.length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">Oppdagede roller</p>
+                  <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">{tr('settings_roles_discovered')}</p>
                   {pendingSuggestions.map((role) => (
                     <div key={role} className="flex items-center justify-between bg-surface rounded-xl border border-dashed border-gray-300 dark:border-slate-600 px-4 py-3">
                       <div>
                         <span className="text-sm text-text-1">{role}</span>
-                        <span className="ml-2 text-xs text-text-3">({roleCounts[role]} ansatte)</span>
+                        <span className="ml-2 text-xs text-text-3">({roleCounts[role]} {tr('settings_staff_unit')})</span>
                       </div>
                       <button onClick={() => addRoleRequirement(role)}
                         className="text-xs bg-primary/10 text-primary px-3 py-1.5 rounded-lg hover:bg-primary/20 transition-colors font-medium">
-                        Legg til krav
+                        {tr('settings_roles_add_req')}
                       </button>
                     </div>
                   ))}
@@ -461,13 +651,13 @@ export function SettingsPage() {
               {/* Deleted / re-add */}
               {deletedRoles.filter(r => suggestedRoles.includes(r)).length > 0 && (
                 <div className="space-y-2">
-                  <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">Fjernede forslag</p>
+                  <p className="text-xs font-semibold text-text-2 uppercase tracking-wider">{tr('settings_roles_removed_title')}</p>
                   {deletedRoles.filter(r => suggestedRoles.includes(r)).map((role) => (
                     <div key={role} className="flex items-center justify-between bg-slate-50 dark:bg-slate-700/30 rounded-xl border border-theme-border px-4 py-3 opacity-60">
                       <span className="text-sm text-text-2">{role}</span>
                       <button onClick={() => addRoleRequirement(role)}
                         className="text-xs bg-slate-100 dark:bg-slate-700 text-text-2 px-3 py-1.5 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium">
-                        Legg til igjen
+                        {tr('settings_roles_readd')}
                       </button>
                     </div>
                   ))}
@@ -479,8 +669,8 @@ export function SettingsPage() {
                   <svg className="w-10 h-10 mx-auto mb-2 opacity-30" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0" />
                   </svg>
-                  <p className="text-sm">Ingen roller oppdaget enda.</p>
-                  <p className="text-xs mt-1">Legg til roller på ansatte — roller med 2+ ansatte vises som forslag her.</p>
+                  <p className="text-sm">{tr('settings_roles_empty')}</p>
+                  <p className="text-xs mt-1">{tr('settings_roles_empty_desc')}</p>
                 </div>
               )}
             </div>
@@ -490,13 +680,13 @@ export function SettingsPage() {
           {tab === 'special' && (
             <div className="space-y-4">
               <div className="bg-blue-50 dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800 rounded-xl px-4 py-3 text-sm text-blue-700 dark:text-blue-300">
-                Legg til dager med avvikende åpningstider — som julaften, nyttårsaften, eller lokale arrangementer. Disse tas automatisk hensyn til i turnusgenereringen.
+                {tr('settings_special_desc')}
               </div>
 
               <div className="space-y-2">
                 {(local.specialDays ?? []).length === 0 && !showSpecialForm && (
                   <div className="text-center py-8 bg-surface rounded-xl border border-theme-border text-text-3">
-                    <p className="text-sm">Ingen spesialdager lagt til enda</p>
+                    <p className="text-sm">{tr('settings_special_empty')}</p>
                   </div>
                 )}
 
@@ -505,7 +695,7 @@ export function SettingsPage() {
                     <div className="flex-1">
                       <div className="flex items-center gap-2">
                         <span className="font-medium text-text-1 text-sm">{formatDateNo(day.date)}</span>
-                        {day.closed && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">Stengt</span>}
+                        {day.closed && <span className="text-xs bg-red-100 text-red-600 px-1.5 py-0.5 rounded font-medium">{tr('settings_special_closed_badge')}</span>}
                       </div>
                       {day.note && <div className="text-xs text-text-2 mt-0.5">{day.note}</div>}
                       {!day.closed && day.openTime && (
@@ -524,38 +714,38 @@ export function SettingsPage() {
                   <div className="bg-surface rounded-xl border border-theme-border p-4 space-y-3">
                     <div className="grid grid-cols-2 gap-3">
                       <div>
-                        <label className="block text-xs font-medium text-text-2 mb-1.5">Dato</label>
+                        <label className="block text-xs font-medium text-text-2 mb-1.5">{tr('settings_special_date')}</label>
                         <input type="date" value={newSpecial.date} onChange={(e) => setNewSpecial({ ...newSpecial, date: e.target.value })}
                           className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                       </div>
                       <div>
-                        <label className="block text-xs font-medium text-text-2 mb-1.5">Beskrivelse</label>
+                        <label className="block text-xs font-medium text-text-2 mb-1.5">{tr('settings_special_description')}</label>
                         <input type="text" value={newSpecial.note} onChange={(e) => setNewSpecial({ ...newSpecial, note: e.target.value })}
-                          placeholder="f.eks. Julaften" className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
+                          placeholder={tr('settings_special_note_placeholder')} className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" />
                       </div>
                     </div>
 
                     <label className="flex items-center gap-2 cursor-pointer">
                       <input type="checkbox" checked={newSpecial.closed} onChange={(e) => setNewSpecial({ ...newSpecial, closed: e.target.checked })} className="w-4 h-4 accent-primary" />
-                      <span className="text-sm text-text-1">Stengt denne dagen</span>
+                      <span className="text-sm text-text-1">{tr('settings_special_closed_day')}</span>
                     </label>
 
                     {!newSpecial.closed && (
                       <div className="grid grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-medium text-text-2 mb-1.5">Åpner</label>
-                          <ClockPicker value={newSpecial.openTime} onChange={(v) => setNewSpecial({ ...newSpecial, openTime: v })} />
+                          <label className="block text-xs font-medium text-text-2 mb-1.5">{tr('settings_special_opens')}</label>
+                          <TimeSelect value={newSpecial.openTime ?? '10:00'} onChange={(v) => setNewSpecial({ ...newSpecial, openTime: v })} timeFormat={local.timeFormat ?? '24h'} />
                         </div>
                         <div>
-                          <label className="block text-xs font-medium text-text-2 mb-1.5">Stenger</label>
-                          <ClockPicker value={newSpecial.closeTime} onChange={(v) => setNewSpecial({ ...newSpecial, closeTime: v })} />
+                          <label className="block text-xs font-medium text-text-2 mb-1.5">{tr('settings_special_closes')}</label>
+                          <TimeSelect value={newSpecial.closeTime ?? '16:00'} onChange={(v) => setNewSpecial({ ...newSpecial, closeTime: v })} timeFormat={local.timeFormat ?? '24h'} />
                         </div>
                       </div>
                     )}
 
                     <div className="flex gap-2">
-                      <button onClick={addSpecialDay} className="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-medium hover:bg-primary-dark">Legg til</button>
-                      <button onClick={() => setShowSpecialForm(false)} className="flex-1 bg-slate-100 dark:bg-slate-700/60 text-text-2 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600">Avbryt</button>
+                      <button onClick={addSpecialDay} className="flex-1 bg-primary text-white py-2 rounded-lg text-sm font-medium hover:bg-primary-dark">{tr('add')}</button>
+                      <button onClick={() => setShowSpecialForm(false)} className="flex-1 bg-slate-100 dark:bg-slate-700/60 text-text-2 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600">{tr('cancel')}</button>
                     </div>
                   </div>
                 ) : (
@@ -564,7 +754,7 @@ export function SettingsPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                     </svg>
-                    Legg til spesialdag
+                    {tr('settings_special_add_btn')}
                   </button>
                 )}
               </div>
@@ -575,31 +765,33 @@ export function SettingsPage() {
           {tab === 'shifts' && (
             <div className="space-y-3">
               {local.shiftTypes.map((shift, i) => (
-                <div key={i} className="bg-surface rounded-xl border border-theme-border shadow-card px-4 py-3 flex items-center gap-3">
-                  <input type="text" value={shift.label} onChange={(e) => updateShift(i, { label: e.target.value })}
-                    className="flex-1 border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" placeholder="Vaktnavn" />
-                  <div className="w-28">
-                    <ClockPicker value={shift.start} onChange={(v) => updateShift(i, { start: v })} />
+                <div key={i} className="bg-surface rounded-xl border border-theme-border shadow-card px-4 py-3 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <input type="text" value={shift.label} onChange={(e) => updateShift(i, { label: e.target.value })}
+                      className="flex-1 border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary" placeholder={tr('settings_shifts_name_placeholder')} />
+                    <button onClick={() => removeShift(i)} className="text-text-3 hover:text-red-500 p-1 transition-colors flex-shrink-0">
+                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                      </svg>
+                    </button>
                   </div>
-                  <span className="text-text-3">–</span>
-                  <div className="w-28">
-                    <ClockPicker value={shift.end} onChange={(v) => updateShift(i, { end: v })} />
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-text-3 w-12 flex-shrink-0">{tr('settings_shifts_start')}</span>
+                    <TimeSelect value={shift.start} onChange={(v) => updateShift(i, { start: v })} timeFormat={local.timeFormat ?? '24h'} />
+                    <span className="text-text-3 px-1">–</span>
+                    <span className="text-xs text-text-3 w-12 flex-shrink-0">{tr('settings_shifts_end')}</span>
+                    <TimeSelect value={shift.end} onChange={(v) => updateShift(i, { end: v })} timeFormat={local.timeFormat ?? '24h'} />
                   </div>
-                  <button onClick={() => removeShift(i)} className="text-text-3 hover:text-red-500 p-1 transition-colors">
-                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                  </button>
                 </div>
               ))}
               {local.shiftTypes.length === 0 && (
-                <div className="text-center py-6 text-text-3 border border-dashed border-gray-200 dark:border-slate-600 rounded-xl text-sm">Ingen vakttyper</div>
+                <div className="text-center py-6 text-text-3 border border-dashed border-gray-200 dark:border-slate-600 rounded-xl text-sm">{tr('settings_shifts_empty')}</div>
               )}
               <button onClick={addShift} className="w-full flex items-center justify-center gap-2 border border-dashed border-gray-300 dark:border-slate-600 rounded-xl py-3 text-sm text-text-2 hover:border-primary hover:text-primary transition-colors">
                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                 </svg>
-                Legg til vakttype
+                {tr('settings_shifts_add')}
               </button>
             </div>
           )}
@@ -609,52 +801,50 @@ export function SettingsPage() {
             <div className="space-y-4">
               <div className="bg-surface rounded-xl border border-theme-border shadow-card divide-y divide-theme-border">
                 <div className="px-5 py-4">
-                  <h3 className="font-medium text-text-1 mb-1">Dine personopplysninger</h3>
-                  <p className="text-sm text-text-2 mb-3">I henhold til GDPR artikkel 15 har du rett til innsyn i alle data vi behandler om deg.</p>
+                  <h3 className="font-medium text-text-1 mb-1">{tr('settings_gdpr_data_title')}</h3>
+                  <p className="text-sm text-text-2 mb-3">{tr('settings_gdpr_data_desc')}</p>
                   <button onClick={exportGdpr} disabled={gdprLoading}
                     className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700/60 text-text-2 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors disabled:opacity-50">
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
                     </svg>
-                    {gdprLoading ? 'Eksporterer...' : 'Eksporter alle mine data (JSON)'}
+                    {gdprLoading ? tr('settings_gdpr_exporting') : tr('settings_gdpr_export')}
                   </button>
                 </div>
 
                 <div className="px-5 py-4">
-                  <h3 className="font-medium text-text-1 mb-1">Slett konto og alle data</h3>
-                  <p className="text-sm text-text-2 mb-3">
-                    I henhold til GDPR artikkel 17 (retten til sletting) kan du permanent slette all data knyttet til din konto. Dette kan ikke angres.
-                  </p>
+                  <h3 className="font-medium text-text-1 mb-1">{tr('settings_gdpr_delete_title')}</h3>
+                  <p className="text-sm text-text-2 mb-3">{tr('settings_gdpr_delete_desc')}</p>
                   <div className="space-y-2">
                     <input type="text" value={deleteConfirm} onChange={(e) => setDeleteConfirm(e.target.value)}
-                      placeholder='Skriv "SLETT KONTO" for å bekrefte'
+                      placeholder={tr('settings_gdpr_delete_confirm_placeholder')}
                       className="w-full border border-theme-border bg-surface text-text-1 placeholder:text-text-3 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-400" />
-                    <button onClick={deleteAccount} disabled={deleteConfirm !== 'SLETT KONTO' || gdprLoading}
+                    <button onClick={deleteAccount} disabled={deleteConfirm !== tr('settings_gdpr_delete_confirm_value') || gdprLoading}
                       className="flex items-center gap-2 bg-red-500 text-white px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-red-600 transition-colors disabled:opacity-40 disabled:cursor-not-allowed">
                       <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
-                      Slett konto permanent
+                      {tr('settings_gdpr_delete_btn')}
                     </button>
                   </div>
                 </div>
 
                 <div className="px-5 py-4">
-                  <h3 className="font-medium text-text-1 mb-2">Personverninformasjon</h3>
+                  <h3 className="font-medium text-text-1 mb-2">{tr('settings_gdpr_privacy_title')}</h3>
                   <div className="space-y-1.5 text-sm text-text-2">
-                    <p>Behandlingsansvarlig: <span className="font-medium">{local.storeName || 'Din bedrift'}</span></p>
-                    <p>Databehandler for AI: <span className="font-medium">Anthropic, PBC (USA)</span></p>
-                    <p>Tilsynsmyndighet: <span className="font-medium">Datatilsynet</span> (<span className="font-mono text-xs">www.datatilsynet.no</span>)</p>
+                    <p>{tr('settings_gdpr_controller')}: <span className="font-medium">{local.storeName || 'Din bedrift'}</span></p>
+                    <p>{tr('settings_gdpr_processor')}: <span className="font-medium">Anthropic, PBC (USA)</span></p>
+                    <p>{tr('settings_gdpr_authority')}: <span className="font-medium">Datatilsynet</span> (<span className="font-mono text-xs">www.datatilsynet.no</span>)</p>
                     {authUser?.gdprConsentAt && (
-                      <p>GDPR-samtykke gitt: <span className="font-medium">{new Date(authUser.gdprConsentAt).toLocaleDateString('nb-NO')}</span></p>
+                      <p>{tr('settings_gdpr_consent_given')}: <span className="font-medium">{new Date(authUser.gdprConsentAt).toLocaleDateString('nb-NO')}</span></p>
                     )}
                   </div>
                 </div>
               </div>
 
               <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-700 rounded-xl px-4 py-3 text-sm text-amber-800 dark:text-amber-300">
-                <p className="font-medium mb-1">Husk å informere dine ansatte</p>
-                <p className="text-amber-700 dark:text-amber-400">Norsk personopplysningslov krever at du informerer ansatte om at data om dem behandles i dette systemet. Fornavn + forbokstav i etternavn sendes til Anthropic ved AI-generering.</p>
+                <p className="font-medium mb-1">{tr('settings_gdpr_employees_notice_title')}</p>
+                <p className="text-amber-700 dark:text-amber-400">{tr('settings_gdpr_employees_notice_desc')}</p>
               </div>
             </div>
           )}
@@ -664,8 +854,8 @@ export function SettingsPage() {
             <div className="space-y-4">
               <div className="bg-surface rounded-xl border border-theme-border shadow-card divide-y divide-theme-border">
                 <div className="px-5 py-5">
-                  <h3 className="font-medium text-text-1 mb-1">Kom i gang-guide</h3>
-                  <p className="text-sm text-text-2 mb-4">Vis den interaktive opplæringen som hjelper deg å sette opp arbeidsplanleggingen.</p>
+                  <h3 className="font-medium text-text-1 mb-1">{tr('settings_about_guide')}</h3>
+                  <p className="text-sm text-text-2 mb-4">{tr('settings_about_guide_desc')}</p>
                   <button
                     onClick={() => {
                       updateSettings({ ...local, onboardingDone: false })
@@ -676,29 +866,90 @@ export function SettingsPage() {
                     <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    Vis opplæring på nytt
+                    {tr('settings_about_guide_btn')}
                   </button>
                 </div>
 
                 <div className="px-5 py-4">
-                  <h3 className="font-medium text-text-1 mb-3">Om appen</h3>
+                  <h3 className="font-medium text-text-1 mb-3">{tr('settings_about_app')}</h3>
                   <div className="space-y-1.5 text-sm text-text-2">
-                    <p>Versjon: <span className="font-medium">1.0.0</span></p>
-                    <p>Plattform: <span className="font-medium">Web / Electron</span></p>
-                    <p>AI-modell: <span className="font-medium">Claude (Anthropic)</span></p>
+                    <p>{tr('settings_about_version')}: <span className="font-medium">1.0.0</span></p>
+                    <p>{tr('settings_about_platform')}: <span className="font-medium">Web / Electron</span></p>
+                    <p>{tr('settings_about_ai')}: <span className="font-medium">Claude (Anthropic)</span></p>
+                  </div>
+                </div>
+
+                <UpdateChecker tr={tr} />
+              </div>
+
+              <div className="bg-surface rounded-xl border border-theme-border shadow-card divide-y divide-theme-border">
+                <div className="px-5 py-4">
+                  <h3 className="font-medium text-text-1 mb-1">{tr('settings_language')}</h3>
+                  <p className="text-sm text-text-2 mb-3">{tr('settings_language_desc')}</p>
+                  <div className="flex gap-2">
+                    {([
+                      { code: 'no', label: '🇳🇴 Norsk' },
+                      { code: 'sv', label: '🇸🇪 Svenska' },
+                      { code: 'en', label: '🇬🇧 English' },
+                    ] as const).map(lang => (
+                      <button key={lang.code}
+                        onClick={() => setLocal({ ...local, language: lang.code })}
+                        className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${local.language === lang.code ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700/60 text-text-2 hover:bg-gray-200 dark:hover:bg-slate-600'}`}>
+                        {lang.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                <div className="px-5 py-4">
+                  <h3 className="font-medium text-text-1 mb-1">{tr('settings_timeformat')}</h3>
+                  <p className="text-sm text-text-2 mb-3">{tr('settings_timeformat_desc')}</p>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setLocal({ ...local, timeFormat: '24h' })}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${(local.timeFormat ?? '24h') === '24h' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700/60 text-text-2 hover:bg-gray-200 dark:hover:bg-slate-600'}`}>
+                      24t (14:30)
+                    </button>
+                    <button
+                      onClick={() => setLocal({ ...local, timeFormat: '12h' })}
+                      className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${(local.timeFormat ?? '24h') === '12h' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700/60 text-text-2 hover:bg-gray-200 dark:hover:bg-slate-600'}`}>
+                      AM/PM (2:30 PM)
+                    </button>
                   </div>
                 </div>
               </div>
 
               <div className="bg-surface rounded-xl border border-theme-border shadow-card px-5 py-4">
-                <h3 className="font-medium text-text-1 mb-1">Logg ut</h3>
-                <p className="text-sm text-text-2 mb-3">Du er innlogget som <span className="font-medium">{authUser?.name}</span>.</p>
+                <h3 className="font-medium text-text-1 mb-1">{tr('settings_theme')}</h3>
+                <p className="text-sm text-text-2 mb-3">{tr('settings_theme_desc')}</p>
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => setTheme('light')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${theme === 'light' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700/60 text-text-2 hover:bg-gray-200 dark:hover:bg-slate-600'}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364 6.364l-.707-.707M6.343 6.343l-.707-.707m12.728 0l-.707.707M6.343 17.657l-.707.707M16 12a4 4 0 11-8 0 4 4 0 018 0z" />
+                    </svg>
+                    {tr('settings_theme_light')}
+                  </button>
+                  <button
+                    onClick={() => setTheme('dark')}
+                    className={`flex items-center gap-2 px-4 py-2.5 rounded-lg text-sm font-medium transition-colors ${theme === 'dark' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-700/60 text-text-2 hover:bg-gray-200 dark:hover:bg-slate-600'}`}>
+                    <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" />
+                    </svg>
+                    {tr('settings_theme_dark')}
+                  </button>
+                </div>
+              </div>
+
+              <div className="bg-surface rounded-xl border border-theme-border shadow-card px-5 py-4">
+                <h3 className="font-medium text-text-1 mb-1">{tr('settings_logout_title')}</h3>
+                <p className="text-sm text-text-2 mb-3">{tr('settings_logout_desc', authUser?.name ?? '')}</p>
                 <button onClick={logout}
                   className="flex items-center gap-2 bg-slate-100 dark:bg-slate-700/60 text-text-2 px-4 py-2.5 rounded-lg text-sm font-medium hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" />
                   </svg>
-                  Logg ut
+                  {tr('logout')}
                 </button>
               </div>
             </div>
@@ -708,21 +959,21 @@ export function SettingsPage() {
       </div>
 
       {/* Save footer */}
-      {tab !== 'gdpr' && tab !== 'om' && (
+      {tab !== 'gdpr' && (
         <div className="px-8 py-4 border-t border-theme-border bg-header flex items-center justify-between">
           <span className={`text-sm transition-opacity ${saved ? 'text-green-600 opacity-100' : 'opacity-0'}`}>
-            Innstillinger lagret!
+            {tr('save')} ✓
           </span>
           <div className="flex gap-3">
             <button onClick={logout} className="px-4 py-2.5 text-sm text-text-2 hover:text-text-1 transition-colors">
-              Logg ut
+              {tr('logout')}
             </button>
             <button onClick={save}
               className="flex items-center gap-2 bg-primary text-white px-5 py-2.5 rounded-xl text-sm font-medium hover:bg-primary-dark transition-colors shadow-sm">
               <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
               </svg>
-              Lagre
+              {tr('save')}
             </button>
           </div>
         </div>

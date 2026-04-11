@@ -1,9 +1,11 @@
 import React, { useState } from 'react'
 import { useAppStore } from '../store/useAppStore'
 import { ScheduleView } from '../components/ScheduleView'
+import { useT } from '../utils/i18n'
 
 export function HistoryPage() {
-  const { schedules, deleteSchedule, updateScheduleDays } = useAppStore()
+  const { schedules, deleteSchedule, updateScheduleDays, settings } = useAppStore()
+  const tr = useT(settings.language ?? 'no')
   const [viewing, setViewing] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null)
@@ -55,7 +57,7 @@ export function HistoryPage() {
               copied ? 'bg-green-100 text-green-700' : 'bg-primary text-white hover:bg-primary-dark'
             }`}
           >
-            {copied ? 'Kopiert!' : 'Kopier plan'}
+            {copied ? tr('schedule_copied') : tr('schedule_copy')}
           </button>
         </div>
         <div className="flex-1 overflow-y-auto p-8">
@@ -77,8 +79,8 @@ export function HistoryPage() {
   return (
     <div className="flex flex-col h-full">
       <div className="px-8 py-6 border-b border-theme-border bg-header">
-        <h1 className="text-2xl font-bold text-text-1">Historikk</h1>
-        <p className="text-text-2 text-sm mt-0.5">{schedules.length} tidligere {schedules.length === 1 ? 'plan' : 'planer'}</p>
+        <h1 className="text-2xl font-bold text-text-1">{tr('history_title')}</h1>
+        <p className="text-text-2 text-sm mt-0.5">{tr('history_subtitle')}</p>
       </div>
 
       <div className="flex-1 overflow-y-auto px-8 py-6">
@@ -89,8 +91,8 @@ export function HistoryPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
             </div>
-            <h3 className="text-lg font-semibold text-text-2 mb-1">Ingen historikk enda</h3>
-            <p className="text-text-3 text-sm">Genererte planer lagres automatisk her.</p>
+            <h3 className="text-lg font-semibold text-text-2 mb-1">{tr('history_empty_title')}</h3>
+            <p className="text-text-3 text-sm">{tr('history_empty_desc')}</p>
           </div>
         ) : (
           <div className="grid gap-3">
@@ -103,25 +105,25 @@ export function HistoryPage() {
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="font-medium text-text-1">{s.title}</div>
-                  <div className="text-xs text-text-3 mt-0.5">Generert {formatDate(s.createdAt)}</div>
+                  <div className="text-xs text-text-3 mt-0.5">{tr('history_generated')} {formatDate(s.createdAt)}</div>
                 </div>
                 <div className="flex gap-2">
                   <button
                     onClick={() => setViewing(s.id)}
                     className="px-3 py-1.5 text-sm text-primary bg-primary/10 rounded-lg hover:bg-primary/20 transition-colors font-medium"
                   >
-                    Vis
+                    {tr('view')}
                   </button>
                   <button
                     onClick={() => copySchedule(s.rawText)}
                     className="px-3 py-1.5 text-sm text-text-2 bg-slate-100 dark:bg-slate-700/60 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors font-medium"
                   >
-                    Kopier
+                    {tr('schedule_copy')}
                   </button>
                   {deleteConfirm === s.id ? (
                     <>
-                      <button onClick={() => { deleteSchedule(s.id); setDeleteConfirm(null) }} className="px-3 py-1.5 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium">Slett</button>
-                      <button onClick={() => setDeleteConfirm(null)} className="px-3 py-1.5 text-sm text-text-2 bg-slate-100 dark:bg-slate-700/60 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">Nei</button>
+                      <button onClick={() => { deleteSchedule(s.id); setDeleteConfirm(null) }} className="px-3 py-1.5 text-sm text-red-600 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors font-medium">{tr('delete')}</button>
+                      <button onClick={() => setDeleteConfirm(null)} className="px-3 py-1.5 text-sm text-text-2 bg-slate-100 dark:bg-slate-700/60 rounded-lg hover:bg-gray-200 dark:hover:bg-slate-600 transition-colors">{tr('no_word')}</button>
                     </>
                   ) : (
                     <button onClick={() => setDeleteConfirm(s.id)} className="p-1.5 text-text-3 hover:text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors">
