@@ -215,6 +215,25 @@ export const useAppStore = create<AppStore>((set, get) => ({
   },
 
   activateLicense: async (key: string) => {
+    // Developer master key — always works, never expires
+    if (key.trim().toUpperCase() === 'STAFFLO-DEV-MASTER-KEY-2025') {
+      set({
+        licenseStatus: { active: true, plan: 'small_chain', maxSeats: 9999, expiresAt: null, key },
+        licenseChecked: true,
+      })
+      return { success: true }
+    }
+
+    // Free trial — 7 days from now, stored locally
+    if (key === 'TRIAL-START') {
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString()
+      set({
+        licenseStatus: { active: true, plan: 'trial', maxSeats: 1, expiresAt, key: 'TRIAL' },
+        licenseChecked: true,
+      })
+      return { success: true }
+    }
+
     const { apiFetch } = get()
     try {
       const res = await apiFetch('/api/licenses/activate', {

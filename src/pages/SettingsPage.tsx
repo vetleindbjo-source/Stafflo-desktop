@@ -62,29 +62,41 @@ function generateId() {
   return Math.random().toString(36).slice(2) + Date.now().toString(36)
 }
 
-function TimeSelect({ value, onChange, timeFormat }: {
+function TimeSelect({ value, onChange, timeFormat, showMinutes = false }: {
   value: string
   onChange: (v: string) => void
   timeFormat: '24h' | '12h'
+  showMinutes?: boolean
 }) {
-  const h = parseInt(value.split(':')[0] ?? '0', 10)
+  const parts = value.split(':')
+  const h = parseInt(parts[0] ?? '0', 10)
+  const m = parseInt(parts[1] ?? '0', 10)
+  const minutes = Array.from({ length: 12 }, (_, i) => i * 5) // 0,5,10,...,55
 
   if (timeFormat === '12h') {
     const ampm = h < 12 ? 'AM' : 'PM'
     const h12 = h === 0 ? 12 : h > 12 ? h - 12 : h
     const setHour = (newH12: number) => {
       const newH = ampm === 'AM' ? (newH12 === 12 ? 0 : newH12) : (newH12 === 12 ? 12 : newH12 + 12)
-      onChange(`${String(newH).padStart(2, '0')}:00`)
+      onChange(`${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
     }
     const setAmpm = (newAmpm: string) => {
       const newH = newAmpm === 'AM' ? (h12 === 12 ? 0 : h12) : (h12 === 12 ? 12 : h12 + 12)
-      onChange(`${String(newH).padStart(2, '0')}:00`)
+      onChange(`${String(newH).padStart(2, '0')}:${String(m).padStart(2, '0')}`)
+    }
+    const setMin = (newM: number) => {
+      onChange(`${String(h).padStart(2, '0')}:${String(newM).padStart(2, '0')}`)
     }
     return (
       <div className="flex items-center gap-1">
         <select value={h12} onChange={e => setHour(parseInt(e.target.value))} className={selectClass}>
           {Array.from({ length: 12 }, (_, i) => i + 1).map(hr => <option key={hr} value={hr}>{hr}</option>)}
         </select>
+        {showMinutes && (
+          <select value={m} onChange={e => setMin(parseInt(e.target.value))} className={selectClass}>
+            {minutes.map(min => <option key={min} value={min}>{String(min).padStart(2, '0')}</option>)}
+          </select>
+        )}
         <select value={ampm} onChange={e => setAmpm(e.target.value)} className={selectClass}>
           <option value="AM">AM</option>
           <option value="PM">PM</option>
@@ -93,12 +105,23 @@ function TimeSelect({ value, onChange, timeFormat }: {
     )
   }
 
+  const setMin = (newM: number) => {
+    onChange(`${String(h).padStart(2, '0')}:${String(newM).padStart(2, '0')}`)
+  }
+
   return (
-    <select value={h} onChange={e => onChange(`${String(parseInt(e.target.value)).padStart(2, '0')}:00`)} className={selectClass}>
-      {Array.from({ length: 24 }, (_, i) => i).map(hr => (
-        <option key={hr} value={hr}>{String(hr).padStart(2, '0')}:00</option>
-      ))}
-    </select>
+    <div className="flex items-center gap-1">
+      <select value={h} onChange={e => onChange(`${String(parseInt(e.target.value)).padStart(2, '0')}:${String(m).padStart(2, '0')}`)} className={selectClass}>
+        {Array.from({ length: 24 }, (_, i) => i).map(hr => (
+          <option key={hr} value={hr}>{String(hr).padStart(2, '0')}:00</option>
+        ))}
+      </select>
+      {showMinutes && (
+        <select value={m} onChange={e => setMin(parseInt(e.target.value))} className={selectClass}>
+          {minutes.map(min => <option key={min} value={min}>{String(min).padStart(2, '0')}</option>)}
+        </select>
+      )}
+    </div>
   )
 }
 
@@ -777,10 +800,10 @@ export function SettingsPage() {
                   </div>
                   <div className="flex items-center gap-2">
                     <span className="text-xs text-text-3 w-12 flex-shrink-0">{tr('settings_shifts_start')}</span>
-                    <TimeSelect value={shift.start} onChange={(v) => updateShift(i, { start: v })} timeFormat={local.timeFormat ?? '24h'} />
+                    <TimeSelect value={shift.start} onChange={(v) => updateShift(i, { start: v })} timeFormat={local.timeFormat ?? '24h'} showMinutes />
                     <span className="text-text-3 px-1">–</span>
                     <span className="text-xs text-text-3 w-12 flex-shrink-0">{tr('settings_shifts_end')}</span>
-                    <TimeSelect value={shift.end} onChange={(v) => updateShift(i, { end: v })} timeFormat={local.timeFormat ?? '24h'} />
+                    <TimeSelect value={shift.end} onChange={(v) => updateShift(i, { end: v })} timeFormat={local.timeFormat ?? '24h'} showMinutes />
                   </div>
                 </div>
               ))}

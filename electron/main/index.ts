@@ -88,6 +88,7 @@ app.whenReady().then(() => {
 
   // Auto-updater — only runs in production builds
   if (app.isPackaged) {
+    autoUpdater.autoDownload = false
     autoUpdater.checkForUpdates()
 
     autoUpdater.on('update-available', (info) => {

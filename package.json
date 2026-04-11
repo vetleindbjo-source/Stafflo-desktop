@@ -1,13 +1,14 @@
 {
   "name": "stafflo",
-  "version": "1.0.0",
+  "version": "1.0.3",
   "description": "Staff. Simplified. — AI-powered work scheduling",
   "main": "out/main/index.js",
   "scripts": {
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "dist": "npm run build && electron-builder"
+    "predist": "node -e \"require('fs').rmSync('dist', {recursive:true, force:true})\"",
+    "dist": "set CSC_IDENTITY_AUTO_DISCOVERY=false && npm run build && electron-builder"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
@@ -58,15 +59,11 @@
       }
     ],
     "win": {
+      "artifactName": "stafflo-setup.exe",
+      "sign": null,
       "target": [
         {
           "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
           "arch": [
             "x64"
           ]
@@ -82,7 +79,7 @@
       "createStartMenuShortcut": true,
       "shortcutName": "Stafflo",
       "installerIcon": "resources/icon.ico",
-      "uninstallerIcon": "resources/icon.ico"
+      "differentialPackage": false
     },
     "mac": {
       "target": [

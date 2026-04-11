@@ -24,6 +24,8 @@ export interface Employee {
   vacationDaysPerYear?: number // e.g. 25 days
   isKeyPersonnel?: boolean    // manager/assistant manager/team leader
   keyPersonnelRole?: string   // e.g. "Butikksjef", "Assisterende leder"
+  allowedShiftTypes?: string[] // shift labels this employee can work; empty/undefined = all shifts
+  birthday?: string            // MM-DD, e.g. "03-15" for March 15
 }
 
 export interface ShiftTime {

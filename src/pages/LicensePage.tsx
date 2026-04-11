@@ -96,15 +96,14 @@ export function LicensePage() {
 
           <div className="mt-5 pt-4 border-t border-white/10">
             <p className="text-white/40 text-xs text-center mb-3">
-              Ingen nøkkel? Kjøp Stafflo på stafflo.no
+              Ingen nøkkel?{' '}
+              <button
+                onClick={() => activateLicense('TRIAL-START')}
+                className="text-blue-400 hover:text-blue-300 underline transition-colors"
+              >
+                Start 7-dagers prøveperiode
+              </button>
             </p>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              {['trial', 'solo', 'small_chain'].map((plan) => (
-                <div key={plan} className="bg-white/5 rounded-lg p-2">
-                  <p className="text-white/60 text-xs leading-tight">{PLAN_LABELS[plan]}</p>
-                </div>
-              ))}
-            </div>
           </div>
         </div>
 

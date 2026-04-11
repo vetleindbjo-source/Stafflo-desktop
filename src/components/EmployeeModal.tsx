@@ -27,7 +27,7 @@ const defaultEmployee = (): Employee => ({
 type Tab = 'info' | 'leave'
 
 export function EmployeeModal({ employee, onSave, onClose }: Props) {
-  const { employees } = useAppStore()
+  const { employees, settings } = useAppStore()
   const [tab, setTab] = useState<Tab>('info')
   const [data, setData] = useState<Employee>(employee ? { ...employee } : defaultEmployee())
   const [positionInput, setPositionInput] = useState<string>(
@@ -254,6 +254,42 @@ export function EmployeeModal({ employee, onSave, onClose }: Props) {
                 </div>
               </div>
 
+              {/* Shift types */}
+              {settings.shiftTypes.length > 0 && (
+                <div>
+                  <label className="block text-xs font-medium text-text-2 uppercase tracking-wider mb-1.5">
+                    Vakttyper
+                  </label>
+                  <p className="text-xs text-text-3 mb-2">Ingen valgt = kan jobbe alle vakter</p>
+                  <div className="flex flex-wrap gap-2">
+                    {settings.shiftTypes.map((shift) => {
+                      const selected = data.allowedShiftTypes?.includes(shift.label) ?? false
+                      return (
+                        <button
+                          key={shift.label}
+                          type="button"
+                          onClick={() => {
+                            const current = data.allowedShiftTypes ?? []
+                            const next = selected
+                              ? current.filter((s) => s !== shift.label)
+                              : [...current, shift.label]
+                            setData({ ...data, allowedShiftTypes: next })
+                          }}
+                          className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${
+                            selected
+                              ? 'bg-primary text-white border-primary'
+                              : 'bg-surface text-text-2 border-theme-border hover:border-primary hover:text-primary'
+                          }`}
+                        >
+                          {shift.label}
+                          <span className="ml-1.5 text-xs opacity-70">{shift.start}–{shift.end}</span>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </div>
+              )}
+
               {/* AI Notes */}
               <div>
                 <label className="block text-xs font-medium text-text-2 uppercase tracking-wider mb-1.5">
@@ -326,7 +362,7 @@ export function EmployeeModal({ employee, onSave, onClose }: Props) {
                 </div>
               </div>
 
-              {/* Phone */}
+              {/* Phone / Email / Birthday */}
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block text-xs font-medium text-text-2 uppercase tracking-wider mb-1.5">Telefon</label>
@@ -348,6 +384,21 @@ export function EmployeeModal({ employee, onSave, onClose }: Props) {
                     placeholder="ansatt@butikk.no"
                   />
                 </div>
+              </div>
+              <div>
+                <label className="block text-xs font-medium text-text-2 uppercase tracking-wider mb-1.5">Bursdag</label>
+                <input
+                  type="date"
+                  value={data.birthday ? `2000-${data.birthday}` : ''}
+                  onChange={(e) => {
+                    const val = e.target.value
+                    if (!val) { setData({ ...data, birthday: undefined }); return }
+                    const mmdd = val.slice(5) // extract MM-DD from YYYY-MM-DD
+                    setData({ ...data, birthday: mmdd })
+                  }}
+                  className="w-full border border-theme-border bg-surface text-text-1 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                />
+                <p className="text-xs text-text-3 mt-1">Kun dag og måned lagres — ikke fødselsåret</p>
               </div>
             </div>
           )}
