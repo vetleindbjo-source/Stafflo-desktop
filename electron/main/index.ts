@@ -89,9 +89,14 @@ app.whenReady().then(() => {
   // Auto-updater — only runs in production builds
   if (app.isPackaged) {
     autoUpdater.autoDownload = false
-    autoUpdater.checkForUpdates()
+    // App is not code-signed, skip publisher verification
+    autoUpdater.verifyUpdateCodeSignature = () => Promise.resolve(undefined)
+
+    let pendingUpdateVersion: string | null = null
+    let updateReadyToInstall = false
 
     autoUpdater.on('update-available', (info) => {
+      pendingUpdateVersion = info.version
       mainWindow?.webContents.send('update-available', {
         version: info.version,
         releaseNotes: info.releaseNotes ?? null,
@@ -103,16 +108,34 @@ app.whenReady().then(() => {
     })
 
     autoUpdater.on('update-downloaded', () => {
+      updateReadyToInstall = true
       mainWindow?.webContents.send('update-downloaded')
     })
+
+    // Re-send cached update state when renderer requests it
+    ipcMain.on('get-update-state', () => {
+      if (updateReadyToInstall) {
+        mainWindow?.webContents.send('update-downloaded')
+      } else if (pendingUpdateVersion) {
+        mainWindow?.webContents.send('update-available', { version: pendingUpdateVersion, releaseNotes: null })
+      }
+    })
+
+    // Delay auto-check so React has time to mount and register listeners
+    mainWindow.webContents.on('did-finish-load', () => {
+      setTimeout(() => autoUpdater.checkForUpdates().catch(() => {}), 3000)
+    })
   }
+
+  ipcMain.on('get-version', (e) => { e.returnValue = app.getVersion() })
 
   ipcMain.on('download-update', () => {
     autoUpdater.downloadUpdate()
   })
 
   ipcMain.on('install-update', () => {
-    autoUpdater.quitAndInstall()
+    autoUpdater.autoInstallOnAppQuit = true
+    setImmediate(() => autoUpdater.quitAndInstall(false, true))
   })
 
   ipcMain.on('check-for-updates', () => {

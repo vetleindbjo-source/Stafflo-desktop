@@ -12,6 +12,7 @@ declare global {
       checkForUpdates?: () => void
       downloadUpdate?: () => void
       installUpdate?: () => void
+      getVersion?: () => string
     }
   }
 }
@@ -896,7 +897,7 @@ export function SettingsPage() {
                 <div className="px-5 py-4">
                   <h3 className="font-medium text-text-1 mb-3">{tr('settings_about_app')}</h3>
                   <div className="space-y-1.5 text-sm text-text-2">
-                    <p>{tr('settings_about_version')}: <span className="font-medium">1.0.0</span></p>
+                    <p>{tr('settings_about_version')}: <span className="font-medium">{window.electronAPI?.getVersion?.() ?? '—'}</span></p>
                     <p>{tr('settings_about_platform')}: <span className="font-medium">Web / Electron</span></p>
                     <p>{tr('settings_about_ai')}: <span className="font-medium">Claude (Anthropic)</span></p>
                   </div>

@@ -16,6 +16,7 @@ declare global {
       installUpdate: () => void
       checkForUpdates: () => void
       onUpdateCheckResult: (cb: (result: 'latest') => void) => void
+      getUpdateState?: () => void
     }
   }
 }
@@ -33,16 +34,25 @@ export function UpdateBanner() {
     })
     api.onUpdateDownloadProgress((percent) => {
       setState({ status: 'downloading', percent })
+      if (percent >= 100) {
+        setTimeout(() => {
+          setState(prev => prev.status === 'downloading' ? { status: 'ready' } : prev)
+        }, 2000)
+      }
     })
     api.onUpdateDownloaded(() => {
       setState({ status: 'ready' })
     })
+
+    // Request cached update state in case events fired before this component mounted
+    api.getUpdateState?.()
   }, [])
 
   if (dismissed || state.status === 'idle') return null
 
   return (
-    <div className="fixed bottom-4 right-4 z-50 w-80 bg-surface border border-theme-border rounded-2xl shadow-xl p-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 backdrop-blur-sm">
+    <div className="w-full max-w-md bg-surface border border-theme-border rounded-2xl shadow-2xl p-8">
       <button
         onClick={() => setDismissed(true)}
         className="absolute top-3 right-3 text-text-3 hover:text-text-1 transition-colors p-1"
@@ -123,6 +133,7 @@ export function UpdateBanner() {
           </button>
         </div>
       )}
+    </div>
     </div>
   )
 }

@@ -1,6 +1,7 @@
 import { contextBridge, ipcRenderer } from 'electron'
 
 contextBridge.exposeInMainWorld('electronAPI', {
+  getVersion: () => ipcRenderer.sendSync('get-version'),
   onUpdateAvailable: (cb: (info: { version: string; releaseNotes: string | null }) => void) => {
     ipcRenderer.on('update-available', (_e, info) => cb(info))
   },
@@ -16,4 +17,5 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onUpdateCheckResult: (cb: (result: 'latest') => void) => {
     ipcRenderer.on('update-check-result', (_e, result) => cb(result))
   },
+  getUpdateState: () => ipcRenderer.send('get-update-state'),
 })

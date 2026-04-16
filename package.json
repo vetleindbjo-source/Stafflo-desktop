@@ -1,6 +1,6 @@
 {
   "name": "stafflo",
-  "version": "1.0.3",
+  "version": "1.0.17",
   "description": "Staff. Simplified. — AI-powered work scheduling",
   "main": "out/main/index.js",
   "scripts": {
@@ -69,12 +69,12 @@
           ]
         }
       ],
-      "icon": "resources/icon.ico",
-      "publisherName": "Stafflo"
+      "icon": "resources/icon.ico"
     },
     "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
+      "oneClick": true,
+      "allowToChangeInstallationDirectory": false,
+      "runAfterFinish": false,
       "createDesktopShortcut": true,
       "createStartMenuShortcut": true,
       "shortcutName": "Stafflo",
