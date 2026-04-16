@@ -1,6 +1,6 @@
 {
   "name": "stafflo",
-  "version": "1.0.17",
+  "version": "1.0.19",
   "description": "Staff. Simplified. — AI-powered work scheduling",
   "main": "out/main/index.js",
   "scripts": {
@@ -106,7 +106,8 @@
     "publish": {
       "provider": "github",
       "owner": "vetleindbjo-source",
-      "repo": "Stafflo-desktop"
+      "repo": "Stafflo-desktop",
+      "releaseType": "release"
     }
   }
 }

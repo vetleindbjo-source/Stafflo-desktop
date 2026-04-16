@@ -13,7 +13,7 @@ import { VacationPage } from './pages/VacationPage'
 import { UpdateBanner } from './components/UpdateBanner'
 
 export default function App() {
-  const { activePage, authUser, checkBackend, settings, checkLicense, licenseStatus, licenseChecked } = useAppStore()
+  const { activePage, authUser, checkBackend, settings, checkLicense, licenseStatus, licenseChecked, syncFromBackend } = useAppStore()
 
   useEffect(() => {
     checkBackend()
@@ -22,7 +22,14 @@ export default function App() {
   }, [])
 
   useEffect(() => {
-    if (authUser) checkLicense()
+    if (authUser) {
+      checkLicense()
+      const id = authUser.id
+      const email = authUser.email
+      if (id !== 'local' && email !== 'dev@arbeidsplan.local') {
+        syncFromBackend()
+      }
+    }
   }, [authUser])
 
   if (!authUser) {
